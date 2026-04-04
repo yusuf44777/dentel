@@ -1,0 +1,15 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dentel-gradient" x1="16" y1="12" x2="112" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#dentel-gradient)"/>
+  <path d="M64 26C46.9 26 34 38.9 34 56C34 64 37 71 42 76C45.5 79.4 47.7 84 48.5 89.1C49.8 97.4 56.4 103 64 103C71.6 103 78.2 97.4 79.5 89.1C80.3 84 82.5 79.4 86 76C91 71 94 64 94 56C94 38.9 81.1 26 64 26Z" fill="white"/>
+  <path d="M46 58C50.5 50 58.5 46 67.5 46H81" stroke="#2563EB" stroke-width="5" stroke-linecap="round"/>
+  <path d="M75 40L84 46L75 52" stroke="#2563EB" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M82 72C77.5 80 69.5 84 60.5 84H47" stroke="#10B981" stroke-width="5" stroke-linecap="round"/>
+  <path d="M53 90L44 84L53 78" stroke="#10B981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="88" cy="36" r="4" fill="#A7F3D0"/>
+</svg>

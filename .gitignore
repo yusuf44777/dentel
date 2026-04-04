@@ -1,0 +1,44 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+**/node_modules/
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+!**/.env.example
+
+# Build / cache outputs
+web/.next/
+web/out/
+web/build/
+web/.vercel/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+**/*.tsbuildinfo
+
+# Logs
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Supabase local temp files
+supabase/.temp/
+
+# Certificates / signing keys
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Local Expo scaffold (created separately, has its own git repo)
+/dentel/
