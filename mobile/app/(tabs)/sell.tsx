@@ -24,7 +24,7 @@ import { Input } from "../../components/ui/Input";
 import { CATEGORIES, CONDITIONS } from "../../constants/categories";
 import { Colors } from "../../constants/colors";
 
-const MAX_IMAGES = 4;
+const MAX_IMAGES = 8;
 
 type PickedImage = {
   uri: string;
