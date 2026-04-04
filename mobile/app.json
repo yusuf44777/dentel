@@ -26,7 +26,8 @@
       },
       "package": "com.dentel.app",
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
@@ -34,10 +35,11 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "dentel needs access to your camera to take listing photos.",
-          "photosPermission": "dentel needs access to your photos to upload listing images."
+          "cameraPermission": "dentel, ilan fotoğrafları çekebilmek için kamerana erişim ister.",
+          "photosPermission": "dentel, ilan fotoğrafları yükleyebilmek için galeri erişimi ister."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

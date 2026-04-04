@@ -24,7 +24,7 @@ function RootLayoutNav() {
       // Signed in — go to main app
       router.replace("/(tabs)");
     }
-  }, [session, loading, segments]);
+  }, [session, loading, segments, router]);
 
   if (loading) {
     return (
@@ -41,6 +41,24 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
+          name="notifications"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="favorites"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="my-listings"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="listing/[id]"
           options={{
             headerShown: true,
@@ -48,6 +66,12 @@ function RootLayoutNav() {
             headerBackTitle: "Geri",
             headerShadowVisible: false,
             headerStyle: { backgroundColor: Colors.surface },
+          }}
+        />
+        <Stack.Screen
+          name="listing/[id]/edit"
+          options={{
+            headerShown: false,
           }}
         />
       </Stack>

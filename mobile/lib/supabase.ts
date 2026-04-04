@@ -50,6 +50,8 @@ export type Listing = {
   status: ListingStatus;
   created_at: string;
   updated_at: string;
+  is_favorited?: boolean;
+  unreadNotificationCount?: number;
   // joined fields
   profiles?: Profile;
   listing_images?: ListingImage[];
@@ -60,4 +62,72 @@ export type ListingImage = {
   listing_id: string;
   image_url: string;
   position: number;
+};
+
+export type Favorite = {
+  id: string;
+  user_id: string;
+  listing_id: string;
+  created_at: string;
+};
+
+export type NotificationEventType =
+  | "favorite_added"
+  | "listing_marked_sold"
+  | "report_submitted";
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  actor_user_id: string | null;
+  listing_id: string | null;
+  event_type: NotificationEventType;
+  title: string;
+  body: string;
+  is_read: boolean;
+  read_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type UserSettings = {
+  user_id: string;
+  contact_whatsapp: boolean;
+  contact_email: boolean;
+  push_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserBlock = {
+  id: string;
+  blocker_id: string;
+  blocked_user_id: string;
+  created_at: string;
+};
+
+export type ListingReportReason = "spam" | "misleading" | "inappropriate" | "other";
+
+export type ListingReport = {
+  id: string;
+  reporter_id: string;
+  listing_id: string;
+  seller_id: string;
+  reason: ListingReportReason;
+  note: string | null;
+  status: "submitted" | "resolved" | "rejected";
+  created_at: string;
+};
+
+export type PushPlatform = "ios" | "android" | "web" | "unknown";
+
+export type PushToken = {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: PushPlatform;
+  enabled: boolean;
+  last_registered_at: string;
+  created_at: string;
+  updated_at: string;
 };

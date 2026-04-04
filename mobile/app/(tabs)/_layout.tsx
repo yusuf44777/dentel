@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet, type TouchableOpacityProps } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
 import type { ComponentProps } from "react";
@@ -7,7 +7,7 @@ import type { ComponentProps } from "react";
 type IoniconsName = ComponentProps<typeof Ionicons>["name"];
 
 // Custom FAB-style Sell tab button
-function SellButton({ onPress }: { onPress?: () => void }) {
+function SellButton({ onPress }: { onPress?: TouchableOpacityProps["onPress"] }) {
   return (
     <TouchableOpacity
       onPress={onPress}

@@ -1,10 +1,14 @@
-import { View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, Image, TouchableOpacity, Dimensions, Pressable, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { getConditionMeta, getCategoryLabel } from "../../constants/categories";
 import type { Listing } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth";
+import { toggleFavorite } from "../../lib/favorites";
+import { emitNotification } from "../../lib/notifications";
 
-const CARD_MARGIN = 6;
+export const CARD_MARGIN = 6;
 const NUM_COLUMNS = 2;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 export const CARD_WIDTH =
@@ -12,12 +16,48 @@ export const CARD_WIDTH =
 
 type Props = {
   listing: Listing;
+  onFavoriteChange?: (listingId: string, isFavorited: boolean) => void;
 };
 
-export function ProductCard({ listing }: Props) {
+export function ProductCard({ listing, onFavoriteChange }: Props) {
   const router = useRouter();
+  const { user } = useAuth();
   const condition = listing.condition ? getConditionMeta(listing.condition) : null;
   const coverImage = listing.listing_images?.[0]?.image_url;
+  const [isFavorited, setIsFavorited] = useState(Boolean(listing.is_favorited));
+
+  useEffect(() => {
+    setIsFavorited(Boolean(listing.is_favorited));
+  }, [listing.id, listing.is_favorited]);
+
+  async function handleFavoriteToggle() {
+    if (!user?.id) {
+      Alert.alert("Favoriler", "Favorilere eklemek için giriş yapmalısın.");
+      return;
+    }
+
+    const next = !isFavorited;
+    setIsFavorited(next);
+
+    try {
+      const actual = await toggleFavorite(user.id, listing.id, next);
+      setIsFavorited(actual);
+      onFavoriteChange?.(listing.id, actual);
+
+      if (actual && listing.seller_id !== user.id) {
+        await emitNotification({
+          eventType: "favorite_added",
+          recipientUserId: listing.seller_id,
+          listingId: listing.id,
+          title: "İlanın favorilere eklendi",
+          body: `"${listing.title}" ilanını bir kullanıcı favorilerine ekledi.`,
+        });
+      }
+    } catch {
+      setIsFavorited(!next);
+      Alert.alert("Hata", "Favori işlemi gerçekleştirilemedi.");
+    }
+  }
 
   return (
     <TouchableOpacity
@@ -68,6 +108,31 @@ export function ProductCard({ listing }: Props) {
             </Text>
           </View>
         )}
+
+        {/* Favorite button */}
+        <Pressable
+          onPress={(event) => {
+            event.stopPropagation();
+            void handleFavoriteToggle();
+          }}
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: "rgba(255,255,255,0.92)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons
+            name={isFavorited ? "heart" : "heart-outline"}
+            size={15}
+            color={isFavorited ? "#EF4444" : "#64748B"}
+          />
+        </Pressable>
       </View>
 
       {/* Info */}
@@ -87,6 +152,11 @@ export function ProductCard({ listing }: Props) {
         <Text style={{ fontSize: 15, fontWeight: "800", color: "#2563EB", marginTop: 6 }}>
           ₺{Number(listing.price).toLocaleString("tr-TR")}
         </Text>
+        {listing.status === "sold" && (
+          <Text style={{ fontSize: 11, fontWeight: "700", color: "#DC2626", marginTop: 4 }}>
+            SATILDI
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );

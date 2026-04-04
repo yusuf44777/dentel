@@ -7,15 +7,25 @@ import {
   Alert,
   Image,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../../lib/supabase";
+import { supabase, type UserSettings } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Colors } from "../../constants/colors";
+import { STRINGS } from "../../constants/strings";
+import {
+  DEFAULT_USER_SETTINGS,
+  getSettings,
+  setPushTokensEnabled,
+  tryRegisterExpoPushToken,
+  updateSettings,
+} from "../../lib/user-settings";
 
 const YEAR_LABELS: Record<string, string> = {
   prep: "Hazırlık",
@@ -47,6 +57,43 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
   );
 }
 
+function SettingToggle({
+  label,
+  value,
+  onToggle,
+  loading,
+}: {
+  label: string;
+  value: boolean;
+  onToggle: (next: boolean) => void;
+  loading?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={() => onToggle(!value)}
+      disabled={loading}
+      className="flex-row items-center justify-between py-3 border-b border-slate-100"
+    >
+      <Text className="text-slate-700 text-sm flex-1 pr-4">{label}</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={Colors.primary} />
+      ) : (
+        <View
+          className={`w-12 h-7 rounded-full px-1 justify-center ${
+            value ? "bg-primary" : "bg-slate-300"
+          }`}
+        >
+          <View
+            className={`w-5 h-5 rounded-full bg-white ${
+              value ? "self-end" : "self-start"
+            }`}
+          />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
 function normalizeWhatsapp(value: string) {
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
@@ -54,6 +101,7 @@ function normalizeWhatsapp(value: string) {
 }
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { profile, user, signOut, refreshProfile } = useAuth();
   const [listingCount, setListingCount] = useState(0);
   const [soldCount, setSoldCount] = useState(0);
@@ -64,6 +112,9 @@ export default function ProfileScreen() {
   const [fullNameInput, setFullNameInput] = useState("");
   const [whatsappInput, setWhatsappInput] = useState("");
   const [yearInput, setYearInput] = useState<string | null>(null);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [pushRegistrationAttempted, setPushRegistrationAttempted] = useState(false);
 
   useEffect(() => {
     setFullNameInput(profile?.full_name ?? "");
@@ -84,8 +135,7 @@ export default function ProfileScreen() {
       supabase
         .from("listings")
         .select("id", { count: "exact", head: true })
-        .eq("seller_id", user.id)
-        .in("status", ["active", "sold"]),
+        .eq("seller_id", user.id),
       supabase
         .from("listings")
         .select("id", { count: "exact", head: true })
@@ -98,11 +148,36 @@ export default function ProfileScreen() {
     setStatsLoading(false);
   }, [user?.id]);
 
+  const loadSettings = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const userSettings = await getSettings(user.id);
+      setSettings(userSettings);
+    } catch {
+      setSettings({
+        user_id: user.id,
+        ...DEFAULT_USER_SETTINGS,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }, [user?.id]);
+
   useFocusEffect(
     useCallback(() => {
       void loadStats();
-    }, [loadStats])
+      void loadSettings();
+      setPushRegistrationAttempted(false);
+    }, [loadStats, loadSettings])
   );
+
+  useEffect(() => {
+    if (!user?.id || !settings || pushRegistrationAttempted) return;
+    if (settings.push_enabled) {
+      void tryRegisterExpoPushToken(user.id);
+    }
+    setPushRegistrationAttempted(true);
+  }, [pushRegistrationAttempted, settings, user?.id]);
 
   function handleSignOut() {
     Alert.alert("Çıkış Yap", "Hesabından çıkmak istediğine emin misin?", [
@@ -137,12 +212,12 @@ export default function ProfileScreen() {
     setSavingProfile(true);
     const { error } = await supabase
       .from("profiles")
-        .update({
-          full_name: fullName,
-          university_year: yearInput,
-          whatsapp: whatsappToSave,
-        })
-        .eq("id", user.id);
+      .update({
+        full_name: fullName,
+        university_year: yearInput,
+        whatsapp: whatsappToSave,
+      })
+      .eq("id", user.id);
 
     setSavingProfile(false);
 
@@ -155,6 +230,31 @@ export default function ProfileScreen() {
     setIsEditing(false);
     setShowYearPicker(false);
     Alert.alert("Başarılı", "Profil bilgilerin güncellendi.");
+  }
+
+  async function handleSettingUpdate(
+    key: "contact_whatsapp" | "contact_email" | "push_enabled",
+    value: boolean
+  ) {
+    if (!user?.id || !settings) return;
+    setSettingsLoading(true);
+    const previous = settings;
+    const nextSettings = { ...settings, [key]: value };
+    setSettings(nextSettings);
+    try {
+      await updateSettings(user.id, { [key]: value });
+      if (key === "push_enabled" && value) {
+        await tryRegisterExpoPushToken(user.id);
+      }
+      if (key === "push_enabled" && !value) {
+        await setPushTokensEnabled(user.id, false);
+      }
+    } catch {
+      setSettings(previous);
+      Alert.alert("Hata", "Ayar kaydedilemedi.");
+    } finally {
+      setSettingsLoading(false);
+    }
   }
 
   function handleCancelEdit() {
@@ -176,12 +276,10 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View className="px-6 pt-4 pb-2">
           <Text className="text-xl font-bold text-slate-900">Profilim</Text>
         </View>
 
-        {/* Avatar + Name */}
         <View className="items-center py-8">
           {profile?.avatar_url ? (
             <Image
@@ -203,7 +301,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Info card */}
         <View className="mx-4 bg-white rounded-2xl px-4 shadow-sm mb-4">
           <InfoRow
             icon="mail-outline"
@@ -217,7 +314,6 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* İstatistikler */}
         <View className="mx-4 bg-white rounded-2xl px-4 py-4 shadow-sm mb-6 flex-row">
           <View className="flex-1 items-center">
             <Text className="text-2xl font-bold text-slate-900">
@@ -234,7 +330,62 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Profil düzenleme */}
+        <View className="mx-4 bg-white rounded-2xl px-4 py-4 shadow-sm mb-6">
+          <Text className="text-slate-900 font-semibold text-base">
+            {STRINGS.profile.quickAccessTitle}
+          </Text>
+          <View className="mt-3 flex-row" style={{ gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => router.push("/favorites")}
+              className="flex-1 bg-slate-100 rounded-xl py-3 px-3"
+            >
+              <Ionicons name="heart-outline" size={18} color={Colors.primary} />
+              <Text className="text-slate-800 text-xs font-semibold mt-2">Favorilerim</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/my-listings")}
+              className="flex-1 bg-slate-100 rounded-xl py-3 px-3"
+            >
+              <Ionicons name="grid-outline" size={18} color={Colors.primary} />
+              <Text className="text-slate-800 text-xs font-semibold mt-2">İlanlarım</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View className="mx-4 bg-white rounded-2xl px-4 py-4 shadow-sm mb-6">
+          <Text className="text-slate-900 font-semibold text-base">
+            {STRINGS.profile.contactSettingsTitle}
+          </Text>
+          <View className="mt-2">
+            <SettingToggle
+              label={STRINGS.profile.contactWhatsapp}
+              value={settings?.contact_whatsapp ?? true}
+              onToggle={(next) => {
+                void handleSettingUpdate("contact_whatsapp", next);
+              }}
+              loading={settingsLoading}
+            />
+            <SettingToggle
+              label={STRINGS.profile.contactEmail}
+              value={settings?.contact_email ?? true}
+              onToggle={(next) => {
+                void handleSettingUpdate("contact_email", next);
+              }}
+              loading={settingsLoading}
+            />
+            <View className="-mb-3">
+              <SettingToggle
+                label={STRINGS.profile.pushEnabled}
+                value={settings?.push_enabled ?? true}
+                onToggle={(next) => {
+                  void handleSettingUpdate("push_enabled", next);
+                }}
+                loading={settingsLoading}
+              />
+            </View>
+          </View>
+        </View>
+
         <View className="mx-4 bg-white rounded-2xl px-4 py-4 shadow-sm mb-6">
           <TouchableOpacity
             onPress={() => setIsEditing((prev) => !prev)}
@@ -329,7 +480,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Sign out */}
         <View className="mx-4 mb-10">
           <Button label="Çıkış Yap" variant="danger" onPress={handleSignOut} />
         </View>
