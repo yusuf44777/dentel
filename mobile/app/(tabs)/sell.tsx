@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 // react-native-get-random-values is polyfilled in _layout.tsx (root entry)
+import { v4 as uuidv4 } from "uuid";
 import { supabase, type ListingCategory, type ListingCondition } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { Button } from "../../components/ui/Button";
@@ -172,7 +173,7 @@ export default function SellScreen() {
 
     setLoading(true);
     try {
-      const listingId = crypto.randomUUID();
+      const listingId = uuidv4();
 
       // 1. Upload images
       setUploadStep("Fotoğraflar yükleniyor...");
