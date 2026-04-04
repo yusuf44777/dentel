@@ -15,6 +15,7 @@ import { supabase } from "../../lib/supabase";
 import { getTurkishErrorMessage } from "../../lib/error-messages";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
+import { BrandMark } from "../../components/BrandMark";
 import { Colors } from "../../constants/colors";
 
 const ALLOWED_DOMAIN = "st.uskudar.edu.tr";
@@ -137,9 +138,12 @@ export default function RegisterScreen() {
         >
           {/* Header */}
           <View className="px-6 pt-12 pb-8">
-            <Text className="text-4xl font-bold text-primary tracking-tight">
-              dentel
-            </Text>
+            <View className="flex-row items-center" style={{ gap: 10 }}>
+              <BrandMark size={36} />
+              <Text className="text-4xl font-bold text-primary tracking-tight">
+                dentel
+              </Text>
+            </View>
             <Text className="text-slate-500 mt-2 text-base">
               Üsküdar Üniversitesi Diş Hekimliği
             </Text>

@@ -17,6 +17,7 @@ import { useAuth } from "../../lib/auth";
 import { getFavoriteListingIds } from "../../lib/favorites";
 import { getUnreadNotificationCount } from "../../lib/notifications";
 import { ProductCard, CARD_MARGIN } from "../../components/listing/ProductCard";
+import { BrandMark } from "../../components/BrandMark";
 import { CATEGORIES, type CategoryMeta } from "../../constants/categories";
 import { Colors } from "../../constants/colors";
 
@@ -131,7 +132,10 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
       <View className="px-4 pt-2 pb-3 flex-row items-center justify-between">
-        <Text className="text-2xl font-bold text-primary tracking-tight">dentel</Text>
+        <View className="flex-row items-center" style={{ gap: 10 }}>
+          <BrandMark size={34} />
+          <Text className="text-2xl font-bold text-primary tracking-tight">dentel</Text>
+        </View>
         <TouchableOpacity
           className="w-9 h-9 bg-white border border-slate-200 rounded-full items-center justify-center"
           onPress={() => router.push("/notifications")}

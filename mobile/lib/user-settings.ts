@@ -105,6 +105,15 @@ export async function tryRegisterExpoPushToken(userId: string) {
     const Notifications = await loadNotificationsModule();
     if (!Notifications) return null;
 
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "Genel Bildirimler",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#2563EB",
+      });
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== "granted") {
