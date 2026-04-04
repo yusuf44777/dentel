@@ -1,6 +1,6 @@
 const features = [
   {
-    icon: "📸",
+    iconClass: "fa-camera",
     title: "Kolayca İlan Ver",
     description:
       "Fotoğraf çek, fiyat yaz, ilanı yayınla. 60 saniyede ilanın hazır.",
@@ -8,7 +8,7 @@ const features = [
     iconBg: "bg-blue-100",
   },
   {
-    icon: "🔍",
+    iconClass: "fa-search",
     title: "Kategoriyle Bul",
     description:
       "Klinik öncesi, klinik, kitaplar, sarf malzeme — aradığın kategoride filtrele.",
@@ -16,7 +16,7 @@ const features = [
     iconBg: "bg-emerald-100",
   },
   {
-    icon: "💬",
+    iconClass: "fa-comments",
     title: "WhatsApp ile Bağlan",
     description:
       "Beğendiğin ürünü bul, tek tuşla satıcıya WhatsApp'tan ulaş.",
@@ -24,7 +24,7 @@ const features = [
     iconBg: "bg-violet-100",
   },
   {
-    icon: "💸",
+    iconClass: "fa-money",
     title: "Nakit, Yüz Yüze",
     description:
       "Ödeme yok, komisyon yok. Kampüste buluşun, teslim alın, nakit ödeyin.",
@@ -32,7 +32,7 @@ const features = [
     iconBg: "bg-amber-100",
   },
   {
-    icon: "🎓",
+    iconClass: "fa-graduation-cap",
     title: "Sadece Üsküdar Öğrencileri",
     description:
       "@st.uskudar.edu.tr e-postanla kayıt ol. Güvenilir, doğrulanmış topluluk.",
@@ -40,7 +40,7 @@ const features = [
     iconBg: "bg-rose-100",
   },
   {
-    icon: "🦷",
+    iconClass: "fa-medkit",
     title: "Diş Hekimliğine Özel",
     description:
       "Genel ikinci el değil. Sadece dental malzeme. Daha hızlı bul, daha hızlı sat.",
@@ -79,7 +79,7 @@ export default function Features() {
               <div
                 className={`${f.iconBg} w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-5`}
               >
-                {f.icon}
+                <i className={`fa ${f.iconClass} text-slate-700`} aria-hidden="true" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">
                 {f.title}

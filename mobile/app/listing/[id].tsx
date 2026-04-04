@@ -195,7 +195,7 @@ export default function ListingDetailScreen() {
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ fontSize: 72 }}>🦷</Text>
+                <Ionicons name="medkit-outline" size={68} color="#94A3B8" />
               </View>
             )}
           </ScrollView>

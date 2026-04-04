@@ -1,5 +1,6 @@
 import { View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { getConditionMeta, getCategoryLabel } from "../../constants/categories";
 import type { Listing } from "../../lib/supabase";
 
@@ -45,7 +46,7 @@ export function ProductCard({ listing }: Props) {
           />
         ) : (
           <View className="flex-1 items-center justify-center">
-            <Text style={{ fontSize: 36 }}>🦷</Text>
+            <Ionicons name="medkit-outline" size={34} color="#94A3B8" />
           </View>
         )}
 

@@ -76,7 +76,7 @@ export default function HomeScreen() {
     if (loading) return null;
     return (
       <View className="flex-1 items-center justify-center py-20">
-        <Text style={{ fontSize: 40 }}>🦷</Text>
+        <Ionicons name="medkit-outline" size={36} color={Colors.muted} />
         <Text className="text-slate-700 font-semibold text-base mt-4">
           Henüz ilan yok
         </Text>
@@ -140,7 +140,11 @@ export default function HomeScreen() {
               }`}
               style={{ gap: 4 }}
             >
-              <Text style={{ fontSize: 13 }}>{cat.emoji}</Text>
+              <Ionicons
+                name={cat.icon as any}
+                size={14}
+                color={active ? "#FFFFFF" : Colors.text.secondary}
+              />
               <Text
                 className={`text-sm font-medium ${active ? "text-white" : "text-slate-700"}`}
               >

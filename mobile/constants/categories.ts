@@ -4,18 +4,17 @@ export type CategoryMeta = {
   value: ListingCategory | "all";
   label: string;
   icon: string; // Ionicons name
-  emoji: string;
 };
 
 export const CATEGORIES: CategoryMeta[] = [
-  { value: "all",        label: "Tümü",          icon: "grid-outline",      emoji: "🏷️" },
-  { value: "pre_clinic", label: "Klinik Öncesi", icon: "medical-outline",   emoji: "🦷" },
-  { value: "clinic",     label: "Klinik",         icon: "pulse-outline",     emoji: "🩺" },
-  { value: "books",      label: "Kitaplar",       icon: "book-outline",      emoji: "📚" },
-  { value: "consumables",label: "Sarf Malzeme",   icon: "cube-outline",      emoji: "📦" },
-  { value: "models",     label: "Modeller",       icon: "shapes-outline",    emoji: "🦷" },
-  { value: "instruments",label: "Aletler",        icon: "build-outline",     emoji: "🔧" },
-  { value: "other",      label: "Diğer",          icon: "ellipsis-horizontal-outline", emoji: "📎" },
+  { value: "all",         label: "Tümü",          icon: "grid-outline" },
+  { value: "pre_clinic",  label: "Klinik Öncesi", icon: "medical-outline" },
+  { value: "clinic",      label: "Klinik",        icon: "pulse-outline" },
+  { value: "books",       label: "Kitaplar",      icon: "book-outline" },
+  { value: "consumables", label: "Sarf Malzeme",  icon: "cube-outline" },
+  { value: "models",      label: "Modeller",      icon: "shapes-outline" },
+  { value: "instruments", label: "Aletler",       icon: "build-outline" },
+  { value: "other",       label: "Diğer",         icon: "ellipsis-horizontal-outline" },
 ];
 
 export type ConditionMeta = {

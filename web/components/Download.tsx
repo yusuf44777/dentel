@@ -65,7 +65,10 @@ export default function Download() {
             {/* iOS installation note */}
             <div className="bg-white/10 rounded-2xl p-4 text-left max-w-xl mx-auto">
               <p className="text-blue-100 text-xs leading-relaxed">
-                <span className="text-white font-bold">📱 iOS Kullanıcıları:</span>{" "}
+                <span className="text-white font-bold inline-flex items-center gap-1">
+                  <i className="fa fa-mobile" aria-hidden="true" />
+                  iOS Kullanıcıları:
+                </span>{" "}
                 IPA dosyasını yüklemek için{" "}
                 <span className="text-white font-semibold">AltStore</span> veya{" "}
                 <span className="text-white font-semibold">Sideloadly</span> kullanabilirsiniz.

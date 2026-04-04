@@ -102,12 +102,16 @@ export default function SearchScreen() {
           return (
             <TouchableOpacity
               onPress={() => setActiveCategory(item.value)}
-              className={`flex-row items-center px-3 py-1.5 rounded-full border ${
+            className={`flex-row items-center px-3 py-1.5 rounded-full border ${
                 active ? "bg-primary border-primary" : "bg-white border-slate-200"
               }`}
               style={{ gap: 4 }}
             >
-              <Text style={{ fontSize: 12 }}>{item.emoji}</Text>
+              <Ionicons
+                name={item.icon as any}
+                size={13}
+                color={active ? "#FFFFFF" : Colors.text.secondary}
+              />
               <Text
                 className={`text-xs font-medium ${active ? "text-white" : "text-slate-700"}`}
               >
@@ -125,14 +129,14 @@ export default function SearchScreen() {
         </View>
       ) : !searched ? (
         <View className="flex-1 items-center justify-center">
-          <Text style={{ fontSize: 40 }}>🔍</Text>
+          <Ionicons name="search-outline" size={36} color={Colors.muted} />
           <Text className="text-slate-500 mt-3 text-sm">
             Aramak istediğin ürünü yaz
           </Text>
         </View>
       ) : listings.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <Text style={{ fontSize: 40 }}>🦷</Text>
+          <Ionicons name="medkit-outline" size={36} color={Colors.muted} />
           <Text className="text-slate-700 font-semibold mt-4">Sonuç bulunamadı</Text>
           <Text className="text-muted text-sm mt-1">Farklı bir arama dene</Text>
         </View>

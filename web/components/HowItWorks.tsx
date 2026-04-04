@@ -4,7 +4,7 @@ const steps = [
     title: "Hesap Oluştur",
     description:
       "Üsküdar Üniversitesi e-postanla (@st.uskudar.edu.tr) ücretsiz kayıt ol. 30 saniye sürer.",
-    icon: "🎓",
+    iconClass: "fa-graduation-cap",
     color: "bg-blue-600",
   },
   {
@@ -12,7 +12,7 @@ const steps = [
     title: "İlan Ver ya da Keşfet",
     description:
       "Kullanmadığın aleti ya da kitabı ilanla. Ya da kategoriye göre filtrele, aradığını bul.",
-    icon: "🔍",
+    iconClass: "fa-search",
     color: "bg-emerald-500",
   },
   {
@@ -20,7 +20,7 @@ const steps = [
     title: "Satıcıyla İletişime Geç",
     description:
       "Beğendiğin ilanın altındaki butona bas, WhatsApp üzerinden satıcıyla doğrudan konuş.",
-    icon: "💬",
+    iconClass: "fa-comments",
     color: "bg-violet-500",
   },
   {
@@ -28,7 +28,7 @@ const steps = [
     title: "Kampüste Buluş, Teslim Al",
     description:
       "Yüz yüze buluşun, ürünü inceleyin, nakit ödeyin. Komisyon yok, aracı yok.",
-    icon: "🤝",
+    iconClass: "fa-handshake-o",
     color: "bg-amber-500",
   },
 ];
@@ -65,7 +65,7 @@ export default function HowItWorks() {
                 <div
                   className={`${s.color} w-24 h-24 rounded-3xl flex flex-col items-center justify-center mb-6 shadow-lg relative z-10`}
                 >
-                  <span className="text-3xl mb-0.5">{s.icon}</span>
+                  <i className={`fa ${s.iconClass} text-white text-2xl mb-1`} aria-hidden="true" />
                   <span className="text-white/70 text-xs font-bold">{s.step}</span>
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 mb-2">
@@ -95,7 +95,7 @@ export default function HowItWorks() {
                 "Facebook gruplarında aramak çok zaman alıyor",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2">
-                  <span className="text-red-400 mt-0.5">✕</span>
+                  <i className="fa fa-times text-red-400 mt-1" aria-hidden="true" />
                   {item}
                 </li>
               ))}
@@ -115,7 +115,7 @@ export default function HowItWorks() {
                 "Kampüs içi topluluk — hızlı, güvenilir, kolay",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2">
-                  <span className="text-emerald-500 mt-0.5">✓</span>
+                  <i className="fa fa-check text-emerald-500 mt-1" aria-hidden="true" />
                   {item}
                 </li>
               ))}

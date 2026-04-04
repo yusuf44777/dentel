@@ -1,10 +1,10 @@
 // Pure CSS phone mockup showing the app UI
 export default function PhoneMockup() {
   const cards = [
-    { emoji: "🦷", title: "GC Fuji IX Kit", price: "₺450", badge: "Sıfır Gibi", badgeColor: "#2563EB", badgeBg: "#DBEAFE" },
-    { emoji: "📚", title: "Histoloji Atlas", price: "₺180", badge: "İyi", badgeColor: "#D97706", badgeBg: "#FEF3C7" },
-    { emoji: "🔧", title: "Ölçü Kaşıkları", price: "₺120", badge: "Sıfır", badgeColor: "#059669", badgeBg: "#D1FAE5" },
-    { emoji: "🩺", title: "Ayna Seti", price: "₺95", badge: "Makul", badgeColor: "#DC2626", badgeBg: "#FEE2E2" },
+    { iconClass: "fa-medkit", title: "GC Fuji IX Kit", price: "₺450", badge: "Sıfır Gibi", badgeColor: "#2563EB", badgeBg: "#DBEAFE" },
+    { iconClass: "fa-book", title: "Histoloji Atlas", price: "₺180", badge: "İyi", badgeColor: "#D97706", badgeBg: "#FEF3C7" },
+    { iconClass: "fa-wrench", title: "Ölçü Kaşıkları", price: "₺120", badge: "Sıfır", badgeColor: "#059669", badgeBg: "#D1FAE5" },
+    { iconClass: "fa-stethoscope", title: "Ayna Seti", price: "₺95", badge: "Makul", badgeColor: "#DC2626", badgeBg: "#FEE2E2" },
   ];
 
   return (
@@ -91,7 +91,7 @@ export default function PhoneMockup() {
               justifyContent: "center",
             }}
           >
-            <span style={{ fontSize: 13 }}>🔔</span>
+            <i className="fa fa-bell-o" style={{ fontSize: 13, color: "#334155" }} aria-hidden="true" />
           </div>
         </div>
 
@@ -107,7 +107,7 @@ export default function PhoneMockup() {
               gap: 6,
             }}
           >
-            <span style={{ fontSize: 12, color: "#94A3B8" }}>🔍</span>
+            <i className="fa fa-search" style={{ fontSize: 11, color: "#94A3B8" }} aria-hidden="true" />
             <span style={{ fontSize: 11, color: "#94A3B8" }}>Alet, kitap ara...</span>
           </div>
         </div>
@@ -122,9 +122,13 @@ export default function PhoneMockup() {
             marginBottom: 12,
           }}
         >
-          {["🏷️ Tümü", "🦷 Klinik Öncesi", "📚 Kitaplar"].map((c, i) => (
+          {[
+            { label: "Tümü", iconClass: "fa-tags" },
+            { label: "Klinik Öncesi", iconClass: "fa-medkit" },
+            { label: "Kitaplar", iconClass: "fa-book" },
+          ].map((c, i) => (
             <div
-              key={c}
+              key={c.label}
               style={{
                 background: i === 0 ? "#2563EB" : "#fff",
                 borderRadius: 20,
@@ -137,9 +141,13 @@ export default function PhoneMockup() {
                 fontWeight: 600,
                 color: i === 0 ? "#fff" : "#475569",
                 whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
               }}
             >
-              {c}
+              <i className={`fa ${c.iconClass}`} style={{ fontSize: 8 }} aria-hidden="true" />
+              {c.label}
             </div>
           ))}
         </div>
@@ -175,10 +183,9 @@ export default function PhoneMockup() {
                   alignItems: "center",
                   justifyContent: "center",
                   position: "relative",
-                  fontSize: 28,
                 }}
               >
-                {card.emoji}
+                <i className={`fa ${card.iconClass}`} style={{ fontSize: 24, color: "#334155" }} aria-hidden="true" />
                 <div
                   style={{
                     position: "absolute",
@@ -220,11 +227,11 @@ export default function PhoneMockup() {
           }}
         >
           {[
-            { icon: "🏠", label: "Ana Sayfa", active: true },
-            { icon: "🔍", label: "Ara", active: false },
+            { iconClass: "fa-home", label: "Ana Sayfa", active: true },
+            { iconClass: "fa-search", label: "Ara", active: false },
             { icon: null, label: "", active: false },
-            { icon: "💬", label: "Mesajlar", active: false },
-            { icon: "👤", label: "Profil", active: false },
+            { iconClass: "fa-comments", label: "Mesajlar", active: false },
+            { iconClass: "fa-user", label: "Profil", active: false },
           ].map((tab, i) =>
             tab.icon === null ? (
               <div
@@ -245,7 +252,11 @@ export default function PhoneMockup() {
               </div>
             ) : (
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                <span style={{ fontSize: 14 }}>{tab.icon}</span>
+                <i
+                  className={`fa ${tab.iconClass}`}
+                  style={{ fontSize: 13, color: tab.active ? "#2563EB" : "#94A3B8" }}
+                  aria-hidden="true"
+                />
                 <span style={{ fontSize: 7, color: tab.active ? "#2563EB" : "#94A3B8", fontWeight: tab.active ? 700 : 500 }}>
                   {tab.label}
                 </span>

@@ -287,7 +287,11 @@ export default function SellScreen() {
                     active ? "bg-primary border-primary" : "bg-white border-slate-200"
                   }`}
                 >
-                  <Text style={{ fontSize: 13 }}>{cat.emoji}</Text>
+                  <Ionicons
+                    name={cat.icon as any}
+                    size={14}
+                    color={active ? "#FFFFFF" : Colors.text.secondary}
+                  />
                   <Text
                     className={`text-sm font-medium ${active ? "text-white" : "text-slate-700"}`}
                   >
