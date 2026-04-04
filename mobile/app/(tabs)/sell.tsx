@@ -14,8 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import * as LegacyFS from "expo-file-system/legacy";
-import { decode } from "base64-arraybuffer";
+import { File } from "expo-file-system";
 import { useRouter } from "expo-router";
 // react-native-get-random-values is polyfilled in _layout.tsx (root entry)
 import { v4 as uuidv4 } from "uuid";
@@ -56,10 +55,18 @@ async function uploadImage(
   const ext = image.fileName.split(".").pop() ?? "jpg";
   const path = `${userId}/${listingId}/${index}.${ext}`;
 
-  const base64 = await LegacyFS.readAsStringAsync(image.uri, {
-    encoding: LegacyFS.EncodingType.Base64,
-  });
-  const arrayBuffer = decode(base64);
+  const file = new File(image.uri);
+  let arrayBuffer: ArrayBuffer;
+  if (typeof file.arrayBuffer === "function") {
+    arrayBuffer = await file.arrayBuffer();
+  } else {
+    const response = await fetch(image.uri);
+    if (typeof response.arrayBuffer === "function") {
+      arrayBuffer = await response.arrayBuffer();
+    } else {
+      throw new Error("Fotoğraf okunamadı. Lütfen farklı bir fotoğraf deneyin.");
+    }
+  }
 
   const { error } = await supabase.storage
     .from("listing-images")
@@ -224,8 +231,13 @@ export default function SellScreen() {
 
       // 4. Navigate to the new listing
       router.replace(`/listing/${listingId}`);
-    } catch (err: any) {
-      Alert.alert("Hata", err.message ?? "Bir hata oluştu, tekrar deneyin.");
+    } catch (err: unknown) {
+      console.error("Sell submit failed:", err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Bir hata oluştu, tekrar deneyin.";
+      Alert.alert("Hata", message);
     } finally {
       setLoading(false);
       setUploadStep("");
