@@ -33,8 +33,9 @@ export default function Hero() {
           {/* Download buttons */}
           <div className="flex flex-col sm:flex-row gap-4 mb-12">
             <a
-              href="/downloads/dentel.apk"
-              download
+              href="https://github.com/yusuf44777/dentel/releases/download/v1.0.0/dentel.apk"
+              target="_blank"
+              rel="noopener noreferrer"
               className="group flex items-center justify-center gap-3 bg-primary hover:bg-primary-dark text-white font-bold px-7 py-4 rounded-2xl transition-all shadow-lg shadow-blue-200 hover:shadow-blue-300 hover:-translate-y-0.5"
             >
               {/* Android icon */}
