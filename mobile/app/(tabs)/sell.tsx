@@ -44,23 +44,6 @@ function createListingId(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-async function readImageAsArrayBuffer(image: PickedImage): Promise<ArrayBuffer> {
-  const response = await fetch(image.uri);
-
-  if (typeof response.arrayBuffer === "function") {
-    return response.arrayBuffer();
-  }
-
-  if (typeof response.blob === "function") {
-    const blob = await response.blob();
-    if (blob && typeof blob.arrayBuffer === "function") {
-      return blob.arrayBuffer();
-    }
-  }
-
-  throw new Error("Fotoğraf cihazdan okunamadı.");
-}
-
 // Uploads one image to Supabase Storage, returns public URL
 async function uploadImage(
   image: PickedImage,
@@ -70,11 +53,13 @@ async function uploadImage(
 ): Promise<string> {
   const ext = image.fileName.split(".").pop() ?? "jpg";
   const path = `${userId}/${listingId}/${index}.${ext}`;
-  const fileData = await readImageAsArrayBuffer(image);
+
+  const response = await fetch(image.uri);
+  const blob = await response.blob();
 
   const { error } = await supabase.storage
     .from("listing-images")
-    .upload(path, fileData, { contentType: image.mimeType, upsert: true });
+    .upload(path, blob, { contentType: image.mimeType, upsert: true });
 
   if (error) throw new Error(error.message);
 
