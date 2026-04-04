@@ -49,6 +49,7 @@ export function Button({
   return (
     <TouchableOpacity
       className={`${container} ${fullWidth ? "w-full" : ""} ${isDisabled ? "opacity-50" : ""}`}
+      style={style}
       disabled={isDisabled}
       activeOpacity={0.8}
       {...props}

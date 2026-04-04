@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
 import { supabase } from "../../lib/supabase";
+import { getTurkishErrorMessage } from "../../lib/error-messages";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 
@@ -21,7 +22,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email || !password) {
-      setError("Please fill in all fields.");
+      setError("Lütfen tüm alanları doldurun.");
       return;
     }
     setError(null);
@@ -33,7 +34,12 @@ export default function LoginScreen() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(
+        getTurkishErrorMessage(
+          error,
+          "Giriş yapılamadı. Bilgilerini kontrol edip tekrar dene."
+        )
+      );
     }
     // On success, _layout.tsx auth guard redirects to /(tabs) automatically
 

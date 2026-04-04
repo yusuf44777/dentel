@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { v4 as uuidv4 } from "uuid";
 import { supabase, type ListingCategory, type ListingCondition } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
+import { getTurkishErrorMessage } from "../../lib/error-messages";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { CATEGORIES, CONDITIONS } from "../../constants/categories";
@@ -186,7 +187,10 @@ export default function SellScreen() {
 
       router.push(`/listing/${listingId}`);
     } catch (err: any) {
-      Alert.alert("Hata", err.message ?? "Bir hata oluştu, tekrar deneyin.");
+      Alert.alert(
+        "Hata",
+        getTurkishErrorMessage(err, "Bir hata oluştu, tekrar deneyin.")
+      );
     } finally {
       setLoading(false);
       setUploadStep("");

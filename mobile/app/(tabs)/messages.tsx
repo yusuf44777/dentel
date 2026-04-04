@@ -31,7 +31,7 @@ export default function MessagesScreen() {
         <Text className="text-slate-500 text-sm text-center leading-relaxed">
           Bir ilanla ilgileniyorsan ilan sayfasındaki{" "}
           <Text className="font-semibold text-slate-700">
-            "WhatsApp'tan İletişime Geç"
+            WhatsApp ile İletişime Geç
           </Text>{" "}
           butonuna bas. Satıcıya doğrudan WhatsApp üzerinden ulaşırsın.
         </Text>

@@ -45,7 +45,7 @@ function RootLayoutNav() {
           options={{
             headerShown: true,
             headerTitle: "",
-            headerBackTitle: "Back",
+            headerBackTitle: "Geri",
             headerShadowVisible: false,
             headerStyle: { backgroundColor: Colors.surface },
           }}

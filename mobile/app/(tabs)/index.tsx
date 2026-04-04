@@ -7,17 +7,18 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { supabase, type Listing } from "../../lib/supabase";
+import { useAuth } from "../../lib/auth";
 import { ProductCard, CARD_MARGIN } from "../../components/listing/ProductCard";
 import { CATEGORIES, type CategoryMeta } from "../../constants/categories";
 import { Colors } from "../../constants/colors";
 
 export default function HomeScreen() {
-  const router = useRouter();
+  const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -26,6 +27,36 @@ export default function HomeScreen() {
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const selectedCategory =
     CATEGORIES.find((cat) => cat.value === activeCategory) ?? CATEGORIES[0];
+
+  async function handleNotificationsPress() {
+    if (!user?.id) {
+      Alert.alert("Bildirimler", "Bildirimleri görmek için giriş yapmalısın.");
+      return;
+    }
+
+    const { count, error } = await supabase
+      .from("listings")
+      .select("id", { count: "exact", head: true })
+      .eq("seller_id", user.id)
+      .eq("status", "sold");
+
+    if (error) {
+      Alert.alert("Bildirimler", "Bildirimler şu an yüklenemiyor. Lütfen tekrar dene.");
+      return;
+    }
+
+    const soldCount = count ?? 0;
+
+    if (soldCount > 0) {
+      Alert.alert(
+        "Bildirimler",
+        `Tebrikler! ${soldCount} ilanın satıldı olarak işaretlenmiş.`
+      );
+      return;
+    }
+
+    Alert.alert("Bildirimler", "Şu an yeni bildirimin bulunmuyor.");
+  }
 
   async function fetchListings(category: string, searchText: string) {
     let query = supabase
@@ -96,7 +127,9 @@ export default function HomeScreen() {
         <Text className="text-2xl font-bold text-primary tracking-tight">dentel</Text>
         <TouchableOpacity
           className="w-9 h-9 bg-white border border-slate-200 rounded-full items-center justify-center"
-          onPress={() => {}} // notifications — future phase
+          onPress={() => {
+            void handleNotificationsPress();
+          }}
         >
           <Ionicons name="notifications-outline" size={18} color={Colors.text.secondary} />
         </TouchableOpacity>

@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
+import { getTurkishErrorMessage } from "../../lib/error-messages";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Colors } from "../../constants/colors";
@@ -75,7 +76,12 @@ export default function RegisterScreen() {
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(
+        getTurkishErrorMessage(
+          signUpError,
+          "Kayıt sırasında bir hata oluştu. Bilgilerini kontrol edip tekrar dene."
+        )
+      );
       setLoading(false);
       return;
     }

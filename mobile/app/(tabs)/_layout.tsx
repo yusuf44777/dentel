@@ -56,7 +56,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Anasayfa",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
               name={focused ? "home" : "home-outline"}
@@ -69,7 +69,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="search"
         options={{
-          title: "Search",
+          title: "Ara",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
               name={focused ? "search" : "search-outline"}
@@ -91,7 +91,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: "Messages",
+          title: "Mesajlar",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
               name={focused ? "chatbubble" : "chatbubble-outline"}
@@ -104,7 +104,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "Profil",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
               name={focused ? "person" : "person-outline"}
