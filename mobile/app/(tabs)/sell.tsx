@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as LegacyFS from "expo-file-system/legacy";
+import { decode } from "base64-arraybuffer";
 import { useRouter } from "expo-router";
 // react-native-get-random-values is polyfilled in _layout.tsx (root entry)
 import { v4 as uuidv4 } from "uuid";
@@ -54,12 +56,14 @@ async function uploadImage(
   const ext = image.fileName.split(".").pop() ?? "jpg";
   const path = `${userId}/${listingId}/${index}.${ext}`;
 
-  const response = await fetch(image.uri);
-  const blob = await response.blob();
+  const base64 = await LegacyFS.readAsStringAsync(image.uri, {
+    encoding: LegacyFS.EncodingType.Base64,
+  });
+  const arrayBuffer = decode(base64);
 
   const { error } = await supabase.storage
     .from("listing-images")
-    .upload(path, blob, { contentType: image.mimeType, upsert: true });
+    .upload(path, arrayBuffer, { contentType: image.mimeType, upsert: true });
 
   if (error) throw new Error(error.message);
 
