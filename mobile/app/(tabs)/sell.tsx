@@ -15,8 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import "react-native-get-random-values";
-import { v4 as uuidv4 } from "uuid";
+// react-native-get-random-values is polyfilled in _layout.tsx (root entry)
 import { supabase, type ListingCategory, type ListingCondition } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { Button } from "../../components/ui/Button";
@@ -121,7 +120,7 @@ export default function SellScreen() {
 
     setLoading(true);
     try {
-      const listingId = uuidv4();
+      const listingId = crypto.randomUUID();
 
       // 1. Upload images
       setUploadStep("Fotoğraflar yükleniyor...");

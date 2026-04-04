@@ -1,3 +1,4 @@
+import "react-native-get-random-values"; // must be first — polyfills crypto for uuid
 import "../global.css";
 import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
