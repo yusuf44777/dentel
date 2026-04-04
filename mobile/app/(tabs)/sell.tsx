@@ -184,7 +184,7 @@ export default function SellScreen() {
       const { error: imgError } = await supabase.from("listing_images").insert(imageRows);
       if (imgError) throw new Error(imgError.message);
 
-      router.replace(`/listing/${listingId}`);
+      router.push(`/listing/${listingId}`);
     } catch (err: any) {
       Alert.alert("Hata", err.message ?? "Bir hata oluştu, tekrar deneyin.");
     } finally {

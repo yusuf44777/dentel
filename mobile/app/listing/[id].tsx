@@ -406,6 +406,10 @@ export default function ListingDetailScreen() {
           {isOwner && !isSold && (
             <View className="gap-3 mb-6">
               <Button
+                label="Ana Sayfaya Dön"
+                onPress={() => router.replace("/(tabs)")}
+              />
+              <Button
                 label="Satıldı Olarak İşaretle"
                 variant="secondary"
                 loading={markingSold}

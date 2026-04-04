@@ -20,6 +20,9 @@ export default function SearchScreen() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const selectedCategory =
+    CATEGORIES.find((cat) => cat.value === activeCategory) ?? CATEGORIES[0];
 
   async function doSearch(text: string, category: string) {
     setLoading(true);
@@ -90,37 +93,68 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {/* Category filter */}
-      <FlatList
-        horizontal
-        data={CATEGORIES}
-        keyExtractor={(item) => item.value}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 12 }}
-        renderItem={({ item }: { item: CategoryMeta }) => {
-          const active = activeCategory === item.value;
-          return (
-            <TouchableOpacity
-              onPress={() => setActiveCategory(item.value)}
-            className={`flex-row items-center px-3 py-1.5 rounded-full border ${
-                active ? "bg-primary border-primary" : "bg-white border-slate-200"
-              }`}
-              style={{ gap: 4 }}
-            >
-              <Ionicons
-                name={item.icon as any}
-                size={13}
-                color={active ? "#FFFFFF" : Colors.text.secondary}
-              />
-              <Text
-                className={`text-xs font-medium ${active ? "text-white" : "text-slate-700"}`}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
-      />
+      {/* Category dropdown */}
+      <View className="px-4 pb-3">
+        <TouchableOpacity
+          onPress={() => setIsCategoryDropdownOpen((prev) => !prev)}
+          className="flex-row items-center justify-between bg-white border border-slate-200 rounded-2xl px-3 py-3"
+        >
+          <View className="flex-row items-center" style={{ gap: 8 }}>
+            <Ionicons
+              name={selectedCategory.icon as any}
+              size={16}
+              color={Colors.text.secondary}
+            />
+            <Text className="text-sm font-medium text-slate-800">
+              {selectedCategory.label}
+            </Text>
+          </View>
+          <Ionicons
+            name={isCategoryDropdownOpen ? "chevron-up-outline" : "chevron-down-outline"}
+            size={18}
+            color={Colors.muted}
+          />
+        </TouchableOpacity>
+
+        {isCategoryDropdownOpen && (
+          <View className="mt-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            {CATEGORIES.map((item: CategoryMeta, index) => {
+              const active = activeCategory === item.value;
+              const showDivider = index !== CATEGORIES.length - 1;
+              return (
+                <TouchableOpacity
+                  key={item.value}
+                  onPress={() => {
+                    setActiveCategory(item.value);
+                    setIsCategoryDropdownOpen(false);
+                  }}
+                  className={`flex-row items-center justify-between px-3 py-3 ${
+                    showDivider ? "border-b border-slate-100" : ""
+                  }`}
+                >
+                  <View className="flex-row items-center" style={{ gap: 8 }}>
+                    <Ionicons
+                      name={item.icon as any}
+                      size={16}
+                      color={active ? Colors.primary : Colors.text.secondary}
+                    />
+                    <Text
+                      className={`text-sm ${
+                        active ? "text-primary font-semibold" : "text-slate-700 font-medium"
+                      }`}
+                    >
+                      {item.label}
+                    </Text>
+                  </View>
+                  {active && (
+                    <Ionicons name="checkmark" size={18} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </View>
 
       {/* Results */}
       {loading ? (

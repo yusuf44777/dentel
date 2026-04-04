@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   ActivityIndicator,
   RefreshControl,
@@ -24,6 +23,9 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const selectedCategory =
+    CATEGORIES.find((cat) => cat.value === activeCategory) ?? CATEGORIES[0];
 
   async function fetchListings(category: string, searchText: string) {
     let query = supabase
@@ -120,40 +122,68 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Category pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="mb-3"
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-      >
-        {CATEGORIES.map((cat: CategoryMeta) => {
-          const active = activeCategory === cat.value;
-          return (
-            <TouchableOpacity
-              key={cat.value}
-              onPress={() => setActiveCategory(cat.value)}
-              className={`flex-row items-center px-4 py-2 rounded-full border ${
-                active
-                  ? "bg-primary border-primary"
-                  : "bg-white border-slate-200"
-              }`}
-              style={{ gap: 4 }}
-            >
-              <Ionicons
-                name={cat.icon as any}
-                size={14}
-                color={active ? "#FFFFFF" : Colors.text.secondary}
-              />
-              <Text
-                className={`text-sm font-medium ${active ? "text-white" : "text-slate-700"}`}
-              >
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      {/* Category dropdown */}
+      <View className="px-4 mb-3">
+        <TouchableOpacity
+          onPress={() => setIsCategoryDropdownOpen((prev) => !prev)}
+          className="flex-row items-center justify-between bg-white border border-slate-200 rounded-2xl px-3 py-3"
+        >
+          <View className="flex-row items-center" style={{ gap: 8 }}>
+            <Ionicons
+              name={selectedCategory.icon as any}
+              size={16}
+              color={Colors.text.secondary}
+            />
+            <Text className="text-sm font-medium text-slate-800">
+              {selectedCategory.label}
+            </Text>
+          </View>
+          <Ionicons
+            name={isCategoryDropdownOpen ? "chevron-up-outline" : "chevron-down-outline"}
+            size={18}
+            color={Colors.muted}
+          />
+        </TouchableOpacity>
+
+        {isCategoryDropdownOpen && (
+          <View className="mt-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            {CATEGORIES.map((cat: CategoryMeta, index) => {
+              const active = activeCategory === cat.value;
+              const showDivider = index !== CATEGORIES.length - 1;
+              return (
+                <TouchableOpacity
+                  key={cat.value}
+                  onPress={() => {
+                    setActiveCategory(cat.value);
+                    setIsCategoryDropdownOpen(false);
+                  }}
+                  className={`flex-row items-center justify-between px-3 py-3 ${
+                    showDivider ? "border-b border-slate-100" : ""
+                  }`}
+                >
+                  <View className="flex-row items-center" style={{ gap: 8 }}>
+                    <Ionicons
+                      name={cat.icon as any}
+                      size={16}
+                      color={active ? Colors.primary : Colors.text.secondary}
+                    />
+                    <Text
+                      className={`text-sm ${
+                        active ? "text-primary font-semibold" : "text-slate-700 font-medium"
+                      }`}
+                    >
+                      {cat.label}
+                    </Text>
+                  </View>
+                  {active && (
+                    <Ionicons name="checkmark" size={18} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </View>
 
       {/* Listings grid */}
       {loading ? (
