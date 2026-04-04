@@ -14,9 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { File } from "expo-file-system";
 import { useRouter } from "expo-router";
-// react-native-get-random-values is polyfilled in _layout.tsx (root entry)
 import { v4 as uuidv4 } from "uuid";
 import { supabase, type ListingCategory, type ListingCondition } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
@@ -31,21 +29,9 @@ type PickedImage = {
   uri: string;
   mimeType: string;
   fileName: string;
+  base64: string;
 };
 
-function createListingId(): string {
-  const cryptoApi = (globalThis as { crypto?: { randomUUID?: () => string } })
-    .crypto;
-  if (typeof cryptoApi?.randomUUID === "function") {
-    return cryptoApi.randomUUID();
-  }
-  if (typeof uuidv4 === "function") {
-    return uuidv4();
-  }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-// Uploads one image to Supabase Storage, returns public URL
 async function uploadImage(
   image: PickedImage,
   userId: string,
@@ -55,29 +41,19 @@ async function uploadImage(
   const ext = image.fileName.split(".").pop() ?? "jpg";
   const path = `${userId}/${listingId}/${index}.${ext}`;
 
-  const file = new File(image.uri);
-  let arrayBuffer: ArrayBuffer;
-  if (typeof file.arrayBuffer === "function") {
-    arrayBuffer = await file.arrayBuffer();
-  } else {
-    const response = await fetch(image.uri);
-    if (typeof response.arrayBuffer === "function") {
-      arrayBuffer = await response.arrayBuffer();
-    } else {
-      throw new Error("Fotoğraf okunamadı. Lütfen farklı bir fotoğraf deneyin.");
-    }
+  const binary = atob(image.base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
   }
 
   const { error } = await supabase.storage
     .from("listing-images")
-    .upload(path, arrayBuffer, { contentType: image.mimeType, upsert: true });
+    .upload(path, bytes.buffer, { contentType: image.mimeType, upsert: true });
 
   if (error) throw new Error(error.message);
 
-  const { data } = supabase.storage
-    .from("listing-images")
-    .getPublicUrl(path);
-
+  const { data } = supabase.storage.from("listing-images").getPublicUrl(path);
   return data.publicUrl;
 }
 
@@ -85,15 +61,12 @@ export default function SellScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  // Form state
   const [images, setImages] = useState<PickedImage[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [condition, setCondition] = useState<ListingCondition | null>(null);
-
-  // UI state
   const [loading, setLoading] = useState(false);
   const [uploadStep, setUploadStep] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -102,11 +75,14 @@ export default function SellScreen() {
     assets: ImagePicker.ImagePickerAsset[],
     source: "gallery" | "camera"
   ) {
-    const picked: PickedImage[] = assets.map((a, i) => ({
-      uri: a.uri,
-      mimeType: a.mimeType ?? "image/jpeg",
-      fileName: a.fileName ?? `${source}_${Date.now()}_${i}.jpg`,
-    }));
+    const picked: PickedImage[] = assets
+      .filter((a) => a.base64)
+      .map((a, i) => ({
+        uri: a.uri,
+        mimeType: a.mimeType ?? "image/jpeg",
+        fileName: a.fileName ?? `${source}_${Date.now()}_${i}.jpg`,
+        base64: a.base64!,
+      }));
     setImages((prev) => [...prev, ...picked].slice(0, MAX_IMAGES));
   }
 
@@ -115,23 +91,19 @@ export default function SellScreen() {
       Alert.alert("Limit Doldu", `En fazla ${MAX_IMAGES} fotoğraf ekleyebilirsiniz.`);
       return;
     }
-
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("İzin Gerekli", "Fotoğraflara erişim izni vermeniz gerekmektedir.");
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: "images",
       allowsMultipleSelection: true,
       quality: 0.8,
       selectionLimit: MAX_IMAGES - images.length,
+      base64: true,
     });
-
-    if (!result.canceled) {
-      addPickedAssets(result.assets, "gallery");
-    }
+    if (!result.canceled) addPickedAssets(result.assets, "gallery");
   }
 
   async function captureFromCamera() {
@@ -139,37 +111,23 @@ export default function SellScreen() {
       Alert.alert("Limit Doldu", `En fazla ${MAX_IMAGES} fotoğraf ekleyebilirsiniz.`);
       return;
     }
-
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("İzin Gerekli", "Kamera erişim izni vermeniz gerekmektedir.");
       return;
     }
-
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: "images",
       quality: 0.8,
+      base64: true,
     });
-
-    if (!result.canceled) {
-      addPickedAssets(result.assets, "camera");
-    }
+    if (!result.canceled) addPickedAssets(result.assets, "camera");
   }
 
   function handleAddImagePress() {
     Alert.alert("Fotoğraf Ekle", "Kaynak seçin", [
-      {
-        text: "Kamera",
-        onPress: () => {
-          void captureFromCamera();
-        },
-      },
-      {
-        text: "Galeri",
-        onPress: () => {
-          void pickFromGallery();
-        },
-      },
+      { text: "Kamera", onPress: () => { void captureFromCamera(); } },
+      { text: "Galeri", onPress: () => { void pickFromGallery(); } },
       { text: "İptal", style: "cancel" },
     ]);
   }
@@ -193,20 +151,18 @@ export default function SellScreen() {
   async function handleSubmit() {
     if (!validate()) return;
     if (!user) return;
-
     setLoading(true);
     try {
-      const listingId = createListingId();
+      const listingId = uuidv4();
 
-      // 1. Upload images
       setUploadStep("Fotoğraflar yükleniyor...");
       const imageUrls: string[] = [];
       for (let i = 0; i < images.length; i++) {
+        setUploadStep(`Fotoğraf ${i + 1}/${images.length} yükleniyor...`);
         const url = await uploadImage(images[i], user.id, listingId, i);
         imageUrls.push(url);
       }
 
-      // 2. Insert listing
       setUploadStep("İlan oluşturuluyor...");
       const { error: listingError } = await supabase.from("listings").insert({
         id: listingId,
@@ -220,7 +176,6 @@ export default function SellScreen() {
       });
       if (listingError) throw new Error(listingError.message);
 
-      // 3. Insert listing_images
       const imageRows = imageUrls.map((url, i) => ({
         listing_id: listingId,
         image_url: url,
@@ -229,15 +184,9 @@ export default function SellScreen() {
       const { error: imgError } = await supabase.from("listing_images").insert(imageRows);
       if (imgError) throw new Error(imgError.message);
 
-      // 4. Navigate to the new listing
       router.replace(`/listing/${listingId}`);
-    } catch (err: unknown) {
-      console.error("Sell submit failed:", err);
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Bir hata oluştu, tekrar deneyin.";
-      Alert.alert("Hata", message);
+    } catch (err: any) {
+      Alert.alert("Hata", err.message ?? "Bir hata oluştu, tekrar deneyin.");
     } finally {
       setLoading(false);
       setUploadStep("");
@@ -250,7 +199,6 @@ export default function SellScreen() {
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* Header */}
         <View className="px-4 pt-2 pb-3 border-b border-slate-100 flex-row items-center">
           <Text className="text-xl font-bold text-slate-900 flex-1">İlan Ver</Text>
         </View>
@@ -261,12 +209,10 @@ export default function SellScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         >
-          {/* ── Image picker ───────────────────────────────── */}
+          {/* ── Image picker ── */}
           <Text className="text-sm font-medium text-slate-700 mb-2">
             Fotoğraflar{" "}
-            <Text className="text-muted font-normal">
-              ({images.length}/{MAX_IMAGES})
-            </Text>
+            <Text className="text-muted font-normal">({images.length}/{MAX_IMAGES})</Text>
           </Text>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-1">
@@ -278,36 +224,23 @@ export default function SellScreen() {
                     style={{ width: 90, height: 90, borderRadius: 12 }}
                     resizeMode="cover"
                   />
-                  {/* Cover badge on first image */}
                   {idx === 0 && (
                     <View
                       style={{
-                        position: "absolute",
-                        bottom: 4,
-                        left: 4,
-                        backgroundColor: "rgba(0,0,0,0.55)",
-                        borderRadius: 6,
-                        paddingHorizontal: 5,
-                        paddingVertical: 2,
+                        position: "absolute", bottom: 4, left: 4,
+                        backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 6,
+                        paddingHorizontal: 5, paddingVertical: 2,
                       }}
                     >
-                      <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>
-                        KAPAK
-                      </Text>
+                      <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>KAPAK</Text>
                     </View>
                   )}
                   <TouchableOpacity
                     onPress={() => removeImage(idx)}
                     style={{
-                      position: "absolute",
-                      top: -6,
-                      right: -6,
-                      backgroundColor: Colors.danger,
-                      borderRadius: 10,
-                      width: 20,
-                      height: 20,
-                      alignItems: "center",
-                      justifyContent: "center",
+                      position: "absolute", top: -6, right: -6,
+                      backgroundColor: Colors.danger, borderRadius: 10,
+                      width: 20, height: 20, alignItems: "center", justifyContent: "center",
                     }}
                   >
                     <Ionicons name="close" size={12} color="#fff" />
@@ -319,30 +252,20 @@ export default function SellScreen() {
                 <TouchableOpacity
                   onPress={handleAddImagePress}
                   style={{
-                    width: 90,
-                    height: 90,
-                    borderRadius: 12,
-                    borderWidth: 2,
-                    borderColor: Colors.border,
-                    borderStyle: "dashed",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "#fff",
+                    width: 90, height: 90, borderRadius: 12,
+                    borderWidth: 2, borderColor: Colors.border, borderStyle: "dashed",
+                    alignItems: "center", justifyContent: "center", backgroundColor: "#fff",
                   }}
                 >
                   <Ionicons name="camera-outline" size={28} color={Colors.muted} />
-                  <Text style={{ fontSize: 11, color: Colors.muted, marginTop: 4 }}>
-                    Ekle
-                  </Text>
+                  <Text style={{ fontSize: 11, color: Colors.muted, marginTop: 4 }}>Ekle</Text>
                 </TouchableOpacity>
               )}
             </View>
           </ScrollView>
-          {errors.images && (
-            <Text className="text-danger text-xs mb-3">{errors.images}</Text>
-          )}
+          {errors.images && <Text className="text-danger text-xs mb-3">{errors.images}</Text>}
 
-          {/* ── Title ──────────────────────────────────────── */}
+          {/* ── Title ── */}
           <View className="mt-4">
             <Input
               label="Başlık"
@@ -354,7 +277,7 @@ export default function SellScreen() {
             />
           </View>
 
-          {/* ── Category picker ────────────────────────────── */}
+          {/* ── Category ── */}
           <Text className="text-sm font-medium text-slate-700 mb-2">Kategori</Text>
           <View className="flex-row flex-wrap gap-2 mb-1">
             {CATEGORIES.filter((c) => c.value !== "all").map((cat) => {
@@ -372,23 +295,17 @@ export default function SellScreen() {
                     size={14}
                     color={active ? "#FFFFFF" : Colors.text.secondary}
                   />
-                  <Text
-                    className={`text-sm font-medium ${active ? "text-white" : "text-slate-700"}`}
-                  >
+                  <Text className={`text-sm font-medium ${active ? "text-white" : "text-slate-700"}`}>
                     {cat.label}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          {errors.category && (
-            <Text className="text-danger text-xs mb-3">{errors.category}</Text>
-          )}
+          {errors.category && <Text className="text-danger text-xs mb-3">{errors.category}</Text>}
 
-          {/* ── Condition picker ───────────────────────────── */}
-          <Text className="text-sm font-medium text-slate-700 mb-2 mt-4">
-            Ürün Durumu
-          </Text>
+          {/* ── Condition ── */}
+          <Text className="text-sm font-medium text-slate-700 mb-2 mt-4">Ürün Durumu</Text>
           <View className="flex-row flex-wrap gap-2 mb-1">
             {CONDITIONS.map((cond) => {
               const active = condition === cond.value;
@@ -397,32 +314,22 @@ export default function SellScreen() {
                   key={cond.value}
                   onPress={() => setCondition(cond.value)}
                   style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 12,
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
                     borderWidth: 1.5,
                     borderColor: active ? cond.color : "#E2E8F0",
                     backgroundColor: active ? cond.bg : "#fff",
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "600",
-                      color: active ? cond.color : "#475569",
-                    }}
-                  >
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: active ? cond.color : "#475569" }}>
                     {cond.label}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          {errors.condition && (
-            <Text className="text-danger text-xs mb-3">{errors.condition}</Text>
-          )}
+          {errors.condition && <Text className="text-danger text-xs mb-3">{errors.condition}</Text>}
 
-          {/* ── Price ──────────────────────────────────────── */}
+          {/* ── Price ── */}
           <View className="mt-4 mb-2">
             <Text className="text-sm font-medium text-slate-700 mb-1.5">Fiyat</Text>
             <View
@@ -440,16 +347,13 @@ export default function SellScreen() {
                 keyboardType="numeric"
               />
             </View>
-            {errors.price && (
-              <Text className="text-danger text-xs mt-1">{errors.price}</Text>
-            )}
+            {errors.price && <Text className="text-danger text-xs mt-1">{errors.price}</Text>}
           </View>
 
-          {/* ── Description ────────────────────────────────── */}
+          {/* ── Description ── */}
           <View className="mt-4">
             <Text className="text-sm font-medium text-slate-700 mb-1.5">
-              Açıklama{" "}
-              <Text className="text-muted font-normal">(İsteğe bağlı)</Text>
+              Açıklama <Text className="text-muted font-normal">(İsteğe bağlı)</Text>
             </Text>
             <View className="bg-white border border-slate-200 rounded-xl px-4 py-3">
               <TextInput
@@ -466,14 +370,12 @@ export default function SellScreen() {
             </View>
           </View>
 
-          {/* ── Submit ─────────────────────────────────────── */}
+          {/* ── Submit ── */}
           <View className="mt-6">
             {loading ? (
               <View className="bg-primary rounded-xl py-4 items-center">
                 <ActivityIndicator color="#fff" />
-                <Text className="text-white text-sm mt-2 font-medium">
-                  {uploadStep}
-                </Text>
+                <Text className="text-white text-sm mt-2 font-medium">{uploadStep}</Text>
               </View>
             ) : (
               <Button label="İlanı Yayınla" onPress={handleSubmit} />

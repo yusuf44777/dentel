@@ -108,15 +108,32 @@ export default function ListingDetailScreen() {
 
   function handleContactWhatsApp() {
     const seller = listing?.profiles as any;
-    const phone = seller?.whatsapp?.replace(/\D/g, "");
+    const phone =
+      seller?.whatsapp != null
+        ? String(seller.whatsapp).replace(/\D/g, "")
+        : "";
+    const email = typeof seller?.email === "string" ? seller.email.trim() : "";
+    const listingTitle =
+      typeof listing?.title === "string" ? listing.title : "ilan";
+
+    if (typeof Linking.openURL !== "function") {
+      Alert.alert("Hata", "Cihazda bağlantı açma özelliği bulunamadı.");
+      return;
+    }
+
     if (!phone) {
       Alert.alert(
         "WhatsApp Bulunamadı",
-        `Satıcıya e-posta ile ulaşabilirsiniz:\n${seller?.email ?? ""}`,
+        email
+          ? `Satıcıya e-posta ile ulaşabilirsiniz:\n${email}`
+          : "Satıcının iletişim bilgisi bulunamadı.",
         [
           {
             text: "E-posta Gönder",
-            onPress: () => Linking.openURL(`mailto:${seller?.email}`),
+            onPress: () => {
+              if (!email) return;
+              void Linking.openURL(`mailto:${email}`);
+            },
           },
           { text: "Tamam" },
         ]
@@ -124,9 +141,9 @@ export default function ListingDetailScreen() {
       return;
     }
     const message = encodeURIComponent(
-      `Merhaba! dentel uygulamasında "${listing?.title}" ilanınla ilgileniyorum.`
+      `Merhaba! dentel uygulamasında "${listingTitle}" ilanınla ilgileniyorum.`
     );
-    Linking.openURL(`https://wa.me/${phone}?text=${message}`);
+    void Linking.openURL(`https://wa.me/${phone}?text=${message}`);
   }
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {

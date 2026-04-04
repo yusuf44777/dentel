@@ -30,6 +30,7 @@ const YEARS = [
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [year, setYear] = useState<string | null>(null);
   const [showYearPicker, setShowYearPicker] = useState(false);
   const [password, setPassword] = useState("");
@@ -46,6 +47,8 @@ export default function RegisterScreen() {
       return `Yalnızca @${ALLOWED_DOMAIN} e-posta adresleri kabul edilmektedir.`;
     }
     if (!year) return "Lütfen sınıfınızı seçin.";
+    const phone = whatsapp.trim().replace(/\D/g, "");
+    if (!phone || phone.length < 10) return "Geçerli bir WhatsApp numarası girin.";
     if (password.length < 6) return "Şifre en az 6 karakter olmalıdır.";
     if (password !== confirmPassword) return "Şifreler eşleşmiyor.";
     return null;
@@ -79,9 +82,11 @@ export default function RegisterScreen() {
 
     // Update the profile row created by the trigger
     if (data.user) {
+      const phone = whatsapp.trim().replace(/\D/g, "");
+      const whatsappNumber = phone.startsWith("90") ? phone : `90${phone.replace(/^0/, "")}`;
       await supabase
         .from("profiles")
-        .update({ full_name: fullName.trim(), university_year: year })
+        .update({ full_name: fullName.trim(), university_year: year, whatsapp: whatsappNumber })
         .eq("id", data.user.id);
     }
 
@@ -211,6 +216,15 @@ export default function RegisterScreen() {
                 </View>
               )}
             </View>
+
+            <Input
+              label="WhatsApp Numarası"
+              placeholder="05XX XXX XX XX"
+              value={whatsapp}
+              onChangeText={setWhatsapp}
+              keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+            />
 
             <Input
               label="Şifre"
