@@ -32,6 +32,35 @@ type PickedImage = {
   fileName: string;
 };
 
+function createListingId(): string {
+  const cryptoApi = (globalThis as { crypto?: { randomUUID?: () => string } })
+    .crypto;
+  if (typeof cryptoApi?.randomUUID === "function") {
+    return cryptoApi.randomUUID();
+  }
+  if (typeof uuidv4 === "function") {
+    return uuidv4();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function readImageAsArrayBuffer(image: PickedImage): Promise<ArrayBuffer> {
+  const response = await fetch(image.uri);
+
+  if (typeof response.arrayBuffer === "function") {
+    return response.arrayBuffer();
+  }
+
+  if (typeof response.blob === "function") {
+    const blob = await response.blob();
+    if (blob && typeof blob.arrayBuffer === "function") {
+      return blob.arrayBuffer();
+    }
+  }
+
+  throw new Error("Fotoğraf cihazdan okunamadı.");
+}
+
 // Uploads one image to Supabase Storage, returns public URL
 async function uploadImage(
   image: PickedImage,
@@ -41,13 +70,11 @@ async function uploadImage(
 ): Promise<string> {
   const ext = image.fileName.split(".").pop() ?? "jpg";
   const path = `${userId}/${listingId}/${index}.${ext}`;
-
-  const response = await fetch(image.uri);
-  const blob = await response.blob();
+  const fileData = await readImageAsArrayBuffer(image);
 
   const { error } = await supabase.storage
     .from("listing-images")
-    .upload(path, blob, { contentType: image.mimeType, upsert: true });
+    .upload(path, fileData, { contentType: image.mimeType, upsert: true });
 
   if (error) throw new Error(error.message);
 
@@ -173,7 +200,7 @@ export default function SellScreen() {
 
     setLoading(true);
     try {
-      const listingId = uuidv4();
+      const listingId = createListingId();
 
       // 1. Upload images
       setUploadStep("Fotoğraflar yükleniyor...");
