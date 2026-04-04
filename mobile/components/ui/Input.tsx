@@ -22,7 +22,9 @@ export function Input({
   secureTextEntry,
   ...props
 }: InputProps) {
-  const [hidden, setHidden] = useState(secureTextEntry ?? false);
+  const [hidden, setHidden] = useState(() =>
+    secureToggle ? true : (secureTextEntry ?? false)
+  );
 
   return (
     <View className="mb-4">
@@ -48,9 +50,11 @@ export function Input({
           <TouchableOpacity
             onPress={() => setHidden((h) => !h)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={hidden ? "Şifreyi göster" : "Şifreyi gizle"}
           >
             <Ionicons
-              name={hidden ? "eye-off-outline" : "eye-outline"}
+              name={hidden ? "eye-outline" : "eye-off-outline"}
               size={20}
               color={Colors.muted}
             />
