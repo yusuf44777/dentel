@@ -18,7 +18,6 @@ web/.next/
 web/out/
 web/build/
 web/.vercel/
-web/public/downloads/*.apk
 mobile/.expo/
 mobile/dist/
 mobile/web-build/
