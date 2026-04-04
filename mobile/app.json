@@ -14,26 +14,40 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.dentel.app"
+      "bundleIdentifier": "com.dentel.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#2563EB"
       },
-      "package": "com.dentel.app"
+      "package": "com.dentel.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
       [
         "expo-image-picker",
         {
+          "cameraPermission": "dentel needs access to your camera to take listing photos.",
           "photosPermission": "dentel needs access to your photos to upload listing images."
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "77c37463-6633-4dae-a9f9-9dfa75be621d"
+      }
+    },
+    "owner": "dentel"
   }
 }

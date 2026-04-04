@@ -74,7 +74,24 @@ export default function SellScreen() {
   const [uploadStep, setUploadStep] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  async function pickImages() {
+  function addPickedAssets(
+    assets: ImagePicker.ImagePickerAsset[],
+    source: "gallery" | "camera"
+  ) {
+    const picked: PickedImage[] = assets.map((a, i) => ({
+      uri: a.uri,
+      mimeType: a.mimeType ?? "image/jpeg",
+      fileName: a.fileName ?? `${source}_${Date.now()}_${i}.jpg`,
+    }));
+    setImages((prev) => [...prev, ...picked].slice(0, MAX_IMAGES));
+  }
+
+  async function pickFromGallery() {
+    if (images.length >= MAX_IMAGES) {
+      Alert.alert("Limit Doldu", `En fazla ${MAX_IMAGES} fotoğraf ekleyebilirsiniz.`);
+      return;
+    }
+
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("İzin Gerekli", "Fotoğraflara erişim izni vermeniz gerekmektedir.");
@@ -89,13 +106,48 @@ export default function SellScreen() {
     });
 
     if (!result.canceled) {
-      const picked: PickedImage[] = result.assets.map((a, i) => ({
-        uri: a.uri,
-        mimeType: a.mimeType ?? "image/jpeg",
-        fileName: a.fileName ?? `photo_${Date.now()}_${i}.jpg`,
-      }));
-      setImages((prev) => [...prev, ...picked].slice(0, MAX_IMAGES));
+      addPickedAssets(result.assets, "gallery");
     }
+  }
+
+  async function captureFromCamera() {
+    if (images.length >= MAX_IMAGES) {
+      Alert.alert("Limit Doldu", `En fazla ${MAX_IMAGES} fotoğraf ekleyebilirsiniz.`);
+      return;
+    }
+
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("İzin Gerekli", "Kamera erişim izni vermeniz gerekmektedir.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      addPickedAssets(result.assets, "camera");
+    }
+  }
+
+  function handleAddImagePress() {
+    Alert.alert("Fotoğraf Ekle", "Kaynak seçin", [
+      {
+        text: "Kamera",
+        onPress: () => {
+          void captureFromCamera();
+        },
+      },
+      {
+        text: "Galeri",
+        onPress: () => {
+          void pickFromGallery();
+        },
+      },
+      { text: "İptal", style: "cancel" },
+    ]);
   }
 
   function removeImage(index: number) {
@@ -236,7 +288,7 @@ export default function SellScreen() {
 
               {images.length < MAX_IMAGES && (
                 <TouchableOpacity
-                  onPress={pickImages}
+                  onPress={handleAddImagePress}
                   style={{
                     width: 90,
                     height: 90,
