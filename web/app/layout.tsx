@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const BASE_URL = "https://denteluskudar.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   title: "dentel — Üsküdar Üniversitesi Dental Malzeme Platformu",
   description:
     "Diş hekimliği öğrencileri için ikinci el dental alet, kitap ve malzeme alım-satım uygulaması. Üsküdar Üniversitesi öğrencilerine özel.",
@@ -11,15 +14,69 @@ export const metadata: Metadata = {
     "ikinci el",
     "üsküdar üniversitesi",
     "dental alet",
+    "diş hekimliği öğrenci",
+    "dental kit",
+    "pre-klinik malzeme",
   ],
+  alternates: {
+    canonical: BASE_URL,
+  },
   openGraph: {
-    title: "dentel",
-    description: "Dental malzemenizi al, satın, takası görün.",
+    title: "dentel — Üsküdar Üniversitesi Dental Malzeme Platformu",
+    description:
+      "Kullanmadığın dental aletleri sat, ihtiyacın olanı uygun fiyata bul. Üsküdar Üniversitesi diş hekimliği öğrencilerine özel uygulama.",
     type: "website",
+    url: BASE_URL,
+    siteName: "dentel",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "dentel — Dental Malzeme Platformu",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "dentel — Üsküdar Üniversitesi Dental Malzeme Platformu",
+    description:
+      "Kullanmadığın dental aletleri sat, ihtiyacın olanı uygun fiyata bul. Üsküdar Üniversitesi diş hekimliği öğrencilerine özel.",
+    images: ["/og-image.png"],
   },
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "MobileApplication",
+  name: "dentel",
+  description:
+    "Diş hekimliği öğrencileri için ikinci el dental alet, kitap ve malzeme alım-satım uygulaması. Üsküdar Üniversitesi öğrencilerine özel.",
+  url: "https://denteluskudar.vercel.app",
+  applicationCategory: "LifestyleApplication",
+  operatingSystem: "Android, iOS",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "TRY",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "dentel",
+    url: "https://denteluskudar.vercel.app",
   },
 };
 
@@ -31,6 +88,10 @@ export default function RootLayout({
   return (
     <html lang="tr" className="scroll-smooth">
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
