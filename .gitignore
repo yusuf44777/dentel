@@ -40,5 +40,10 @@ supabase/.temp/
 *.key
 *.mobileprovision
 
+# Binary app artifacts
+*.apk
+*.aab
+*.ipa
+
 # Local Expo scaffold (created separately, has its own git repo)
 /dentel/
