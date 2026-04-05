@@ -24,6 +24,7 @@ export default function Footer() {
                 <li><a href="#features" className="hover:text-white transition-colors">Özellikler</a></li>
                 <li><a href="#how-it-works" className="hover:text-white transition-colors">Nasıl Çalışır</a></li>
                 <li><a href="#download" className="hover:text-white transition-colors">İndir</a></li>
+                <li><a href="#ios-guide" className="hover:text-white transition-colors">iOS Kurulum</a></li>
               </ul>
             </div>
             <div>
