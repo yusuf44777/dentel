@@ -29,8 +29,9 @@ export default function Download() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
               {/* Android APK */}
               <a
-                href="/downloads/dentel.apk"
-                download
+                href="https://github.com/yusuf44777/dentel/releases/download/v1.0.0/dentel"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group flex items-center justify-center gap-4 bg-white hover:bg-slate-50 text-slate-900 font-bold px-8 py-5 rounded-2xl transition-all shadow-2xl hover:-translate-y-0.5"
               >
                 <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
