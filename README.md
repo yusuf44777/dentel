@@ -65,6 +65,19 @@ cd web
 npm run dev
 ```
 
+### Mobile iOS Preview Build (EAS)
+
+```bash
+cd mobile
+npm run build:ios:preview
+```
+
+İlk kullanımda EAS hesabınla giriş yapman gerekebilir:
+
+```bash
+npx eas login
+```
+
 ### Supabase Migration Push
 
 ```bash
