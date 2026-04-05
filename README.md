@@ -78,6 +78,24 @@ npm run build:ios:preview
 npx eas login
 ```
 
+### Mobile Android Release APK (arm64-v8a)
+
+Direct indirme için daha küçük APK üretmek adına Android build varsayılanı `arm64-v8a` olarak ayarlı.
+
+```bash
+cd mobile/android
+./gradlew clean
+./gradlew assembleRelease
+```
+
+Oluşan dosya:
+
+```text
+mobile/android/app/build/outputs/apk/release/app-arm64-v8a-release.apk
+```
+
+Not: Bu APK sadece `arm64` cihazlarda çalışır. Eski 32-bit (`armeabi-v7a`) cihazlar için `reactNativeArchitectures` değerini genişletmelisin.
+
 ### Supabase Migration Push
 
 ```bash
