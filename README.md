@@ -122,6 +122,8 @@ supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PAS
 supabase db push
 ```
 
+Not: Drive eşleşmesi için `listing_images` tablosuna `drive_file_id`, `storage_path`, `storage_provider` alanları migration ile eklenir.
+
 ### Supabase Edge Function Deploy (Drive Upload)
 
 `upload-listing-image` fonksiyonu ile fotoğraflar Google Drive'a yüklenir.

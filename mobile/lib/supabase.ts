@@ -61,6 +61,9 @@ export type ListingImage = {
   id: string;
   listing_id: string;
   image_url: string;
+  storage_provider?: string | null;
+  storage_path?: string | null;
+  drive_file_id?: string | null;
   position: number;
 };
 

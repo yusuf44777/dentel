@@ -171,10 +171,11 @@ Deno.serve(async (req: Request) => {
     });
 
     const ext = detectExtension(payload);
+    const storagePath = `listings/${user.id}/${payload.listingId}/${payload.index}.${ext}`;
     const driveFileName = `${user.id}_${payload.listingId}_${payload.index}.${ext}`;
 
     const createResponse = await fetch(
-      "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id",
+      "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,webViewLink,name,parents",
       {
         method: "POST",
         headers: {
@@ -184,6 +185,12 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify({
           name: driveFileName,
           parents: [googleFolderId],
+          appProperties: {
+            storage_path: storagePath,
+            listing_id: payload.listingId,
+            user_id: user.id,
+            photo_index: String(payload.index),
+          },
         }),
       }
     );
@@ -234,7 +241,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const publicUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-    return jsonResponse(200, { success: true, fileId, publicUrl });
+    return jsonResponse(200, {
+      success: true,
+      fileId,
+      storagePath,
+      publicUrl,
+      driveViewUrl: createJson.webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`,
+      folderId: googleFolderId,
+    });
   } catch (error) {
     if (createdFileId && driveAccessToken) {
       await fetch(`https://www.googleapis.com/drive/v3/files/${createdFileId}?supportsAllDrives=true`, {

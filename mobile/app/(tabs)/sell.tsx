@@ -36,14 +36,24 @@ type PickedImage = {
 type UploadListingImageResponse = {
   success?: boolean;
   publicUrl?: string;
+  fileId?: string;
+  storagePath?: string;
+  driveViewUrl?: string;
+  folderId?: string;
   error?: string;
+};
+
+type UploadedImage = {
+  publicUrl: string;
+  fileId: string;
+  storagePath: string;
 };
 
 async function uploadImage(
   image: PickedImage,
   listingId: string,
   index: number
-): Promise<string> {
+): Promise<UploadedImage> {
   const { data, error } = await supabase.functions.invoke<UploadListingImageResponse>(
     "upload-listing-image",
     {
@@ -58,8 +68,15 @@ async function uploadImage(
   );
 
   if (error) throw new Error(error.message);
-  if (!data?.publicUrl) throw new Error(data?.error ?? "Fotoğraf URL'i alınamadı.");
-  return data.publicUrl;
+  if (!data?.publicUrl || !data.fileId || !data.storagePath) {
+    throw new Error(data?.error ?? "Drive dosyası bilgisi alınamadı.");
+  }
+
+  return {
+    publicUrl: data.publicUrl,
+    fileId: data.fileId,
+    storagePath: data.storagePath,
+  };
 }
 
 export default function SellScreen() {
@@ -162,11 +179,11 @@ export default function SellScreen() {
       const listingId = uuidv4();
 
       setUploadStep("Fotoğraflar yükleniyor...");
-      const imageUrls: string[] = [];
+      const uploadedImages: UploadedImage[] = [];
       for (let i = 0; i < images.length; i++) {
         setUploadStep(`Fotoğraf ${i + 1}/${images.length} yükleniyor...`);
-        const url = await uploadImage(images[i], listingId, i);
-        imageUrls.push(url);
+        const uploaded = await uploadImage(images[i], listingId, i);
+        uploadedImages.push(uploaded);
       }
 
       setUploadStep("İlan oluşturuluyor...");
@@ -182,9 +199,12 @@ export default function SellScreen() {
       });
       if (listingError) throw new Error(listingError.message);
 
-      const imageRows = imageUrls.map((url, i) => ({
+      const imageRows = uploadedImages.map((uploaded, i) => ({
         listing_id: listingId,
-        image_url: url,
+        image_url: uploaded.publicUrl,
+        drive_file_id: uploaded.fileId,
+        storage_path: uploaded.storagePath,
+        storage_provider: "google_drive",
         position: i,
       }));
       const { error: imgError } = await supabase.from("listing_images").insert(imageRows);
