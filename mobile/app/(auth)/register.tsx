@@ -8,9 +8,10 @@ import {
   TouchableOpacity,
   Pressable,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
 import { supabase } from "../../lib/supabase";
 import { getTurkishErrorMessage } from "../../lib/error-messages";
 import { Button } from "../../components/ui/Button";
@@ -30,6 +31,9 @@ const YEARS = [
 ];
 
 export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
+  const authEmailRedirectTo =
+    process.env.EXPO_PUBLIC_AUTH_EMAIL_REDIRECT_TO ?? Linking.createURL("/auth/callback");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -38,8 +42,12 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   function validate() {
     if (!fullName.trim()) return "Lütfen adınızı girin.";
@@ -63,12 +71,15 @@ export default function RegisterScreen() {
       return;
     }
     setError(null);
+    setInfo(null);
     setLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
 
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       password,
       options: {
+        emailRedirectTo: authEmailRedirectTo,
         data: {
           full_name: fullName.trim(),
           university_year: year,
@@ -97,8 +108,38 @@ export default function RegisterScreen() {
         .eq("id", data.user.id);
     }
 
+    setRegisteredEmail(normalizedEmail);
+    setNeedsEmailVerification(!data.session);
     setSuccess(true);
     setLoading(false);
+  }
+
+  async function handleResendConfirmation() {
+    if (!registeredEmail) return;
+    setResendLoading(true);
+    setError(null);
+    setInfo(null);
+
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: registeredEmail,
+      options: {
+        emailRedirectTo: authEmailRedirectTo,
+      },
+    });
+
+    if (resendError) {
+      setError(
+        getTurkishErrorMessage(
+          resendError,
+          "Doğrulama maili tekrar gönderilemedi. Biraz sonra tekrar dene."
+        )
+      );
+    } else {
+      setInfo("Doğrulama maili tekrar gönderildi. Spam klasörünü de kontrol et.");
+    }
+
+    setResendLoading(false);
   }
 
   if (success) {
@@ -109,12 +150,37 @@ export default function RegisterScreen() {
             <Ionicons name="checkmark-circle" size={40} color={Colors.secondary} />
           </View>
           <Text className="text-xl font-bold text-slate-900 mb-2">
-            Kayıt Başarılı!
+            {needsEmailVerification ? "Kayıt Alındı" : "Kayıt Başarılı!"}
           </Text>
           <Text className="text-slate-500 text-sm text-center mb-6">
-            E-posta adresine bir doğrulama bağlantısı gönderdik. Lütfen
-            e-postanı kontrol et.
+            {needsEmailVerification
+              ? "E-posta doğrulaması gerekiyor. Gelen kutusu ve spam klasörünü kontrol et."
+              : "Hesabın oluşturuldu. Giriş ekranından devam edebilirsin."}
           </Text>
+
+          {needsEmailVerification && (
+            <Button
+              label="Maili Tekrar Gönder"
+              onPress={() => {
+                void handleResendConfirmation();
+              }}
+              loading={resendLoading}
+              style={{ marginBottom: 12 }}
+            />
+          )}
+
+          {(info || error) && (
+            <View
+              className={`w-full rounded-xl border px-4 py-3 mb-4 ${
+                error ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"
+              }`}
+            >
+              <Text className={`text-sm ${error ? "text-danger" : "text-emerald-700"}`}>
+                {error ?? info}
+              </Text>
+            </View>
+          )}
+
           <Link href="/(auth)/login" asChild>
             <Button label="Giriş Yap" />
           </Link>
@@ -130,10 +196,16 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: Math.max(insets.bottom, 16),
+          }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}

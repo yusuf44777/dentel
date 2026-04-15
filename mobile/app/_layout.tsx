@@ -39,6 +39,12 @@ function RootLayoutNav() {
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
+        <Stack.Screen
+          name="auth/callback"
+          options={{
+            headerShown: false,
+          }}
+        />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="notifications"

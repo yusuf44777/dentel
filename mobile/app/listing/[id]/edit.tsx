@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
+  KeyboardAvoidingView,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../../lib/auth";
@@ -24,6 +26,7 @@ const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
 ];
 
 export default function ListingEditScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -135,7 +138,18 @@ export default function ListingEditScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
-      <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: 30 }}>
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
+      >
+        <ScrollView
+          className="flex-1 px-4 pt-2"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 40) }}
+        >
         <View className="flex-row items-center mb-4">
           <TouchableOpacity onPress={() => router.back()} className="mr-2">
             <Ionicons name="chevron-back" size={22} color={Colors.text.secondary} />
@@ -246,7 +260,8 @@ export default function ListingEditScreen() {
         </View>
 
         <Button label="Kaydet" loading={saving} onPress={handleSave} />
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

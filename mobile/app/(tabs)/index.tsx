@@ -7,6 +7,7 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -173,6 +174,7 @@ export default function HomeScreen() {
             placeholderTextColor={Colors.muted}
             value={search}
             onChangeText={setSearch}
+            onSubmitEditing={() => Keyboard.dismiss()}
             returnKeyType="search"
           />
           {search.length > 0 && (
@@ -254,6 +256,8 @@ export default function HomeScreen() {
           data={listings}
           keyExtractor={(item) => item.id}
           numColumns={2}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={{
             paddingHorizontal: 16 - CARD_MARGIN,
             paddingBottom: 24,

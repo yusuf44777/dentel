@@ -34,10 +34,25 @@ cd dentel
 cp mobile/.env.example mobile/.env.local
 ```
 
+`mobile/.env.local` içinde auth redirect adresini de belirt:
+
+```bash
+EXPO_PUBLIC_AUTH_EMAIL_REDIRECT_TO=dentel://auth/callback
+```
+
 Supabase migration/push için `supabase/.env.example` dosyasını `supabase/.env.local` olarak kopyala ve doldur:
 
 ```bash
 cp supabase/.env.example supabase/.env.local
+```
+
+`supabase/.env.local` içinde Google Drive değişkenlerini de doldur:
+
+```bash
+GOOGLE_DRIVE_OAUTH_CLIENT_ID=
+GOOGLE_DRIVE_OAUTH_CLIENT_SECRET=
+GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN=
+GOOGLE_DRIVE_FOLDER_ID=
 ```
 
 ### 3) Bağımlılıkları yükle
@@ -105,6 +120,19 @@ source supabase/.env.local
 set +a
 supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 supabase db push
+```
+
+### Supabase Edge Function Deploy (Drive Upload)
+
+`upload-listing-image` fonksiyonu ile fotoğraflar Google Drive'a yüklenir.
+
+```bash
+cd supabase
+set -a
+source .env.local
+set +a
+supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" --env-file .env.local
+supabase functions deploy upload-listing-image --project-ref "$SUPABASE_PROJECT_REF"
 ```
 
 ## Deploy

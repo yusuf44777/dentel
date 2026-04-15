@@ -6,8 +6,11 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase, type Listing } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
@@ -32,6 +35,7 @@ const SORT_OPTIONS: { value: SortFilter; label: string }[] = [
 ];
 
 export default function SearchScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -100,6 +104,7 @@ export default function SearchScreen() {
   }, [doSearch, searched]);
 
   function handleSubmit() {
+    Keyboard.dismiss();
     void doSearch(true);
   }
 
@@ -112,6 +117,11 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
+      >
       <View className="px-4 pt-4 pb-3">
         <Text className="text-xl font-bold text-slate-900 mb-3">Arama</Text>
         <View className="flex-row items-center bg-white border border-slate-200 rounded-2xl px-3 py-2.5 gap-2">
@@ -323,15 +333,19 @@ export default function SearchScreen() {
           data={listings}
           keyExtractor={(item) => item.id}
           numColumns={2}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
           contentContainerStyle={{
             paddingHorizontal: 16 - CARD_MARGIN,
-            paddingBottom: 24,
+            paddingBottom: Math.max(insets.bottom + 16, 24),
           }}
           columnWrapperStyle={{ justifyContent: "flex-start" }}
           renderItem={({ item }) => <ProductCard listing={item} />}
           showsVerticalScrollIndicator={false}
         />
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

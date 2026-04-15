@@ -39,6 +39,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.muted,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
           backgroundColor: Colors.card,
           borderTopColor: Colors.border,

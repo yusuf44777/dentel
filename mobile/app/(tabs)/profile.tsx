@@ -2,14 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
+  KeyboardAvoidingView,
   ScrollView,
   TouchableOpacity,
   Alert,
   Image,
   Pressable,
   ActivityIndicator,
+  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -101,6 +103,7 @@ function normalizeWhatsapp(value: string) {
 }
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { profile, user, signOut, refreshProfile } = useAuth();
   const [listingCount, setListingCount] = useState(0);
@@ -275,7 +278,18 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 16, 28) }}
+        >
         <View className="px-6 pt-4 pb-2">
           <Text className="text-xl font-bold text-slate-900">Profilim</Text>
         </View>
@@ -483,7 +497,8 @@ export default function ProfileScreen() {
         <View className="mx-4 mb-10">
           <Button label="Çıkış Yap" variant="danger" onPress={handleSignOut} />
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
