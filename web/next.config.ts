@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Allow APK/IPA to be served from /public/downloads
+  // Allow downloadable files to be served from /public/downloads
   async headers() {
     return [
       {

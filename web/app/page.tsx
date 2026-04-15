@@ -3,7 +3,6 @@ import Hero from "../components/Hero";
 import Features from "../components/Features";
 import HowItWorks from "../components/HowItWorks";
 import Download from "../components/Download";
-import IosGuide from "../components/IosGuide";
 import Footer from "../components/Footer";
 
 export default function HomePage() {
@@ -14,7 +13,6 @@ export default function HomePage() {
       <Features />
       <HowItWorks />
       <Download />
-      <IosGuide />
       <Footer />
     </main>
   );

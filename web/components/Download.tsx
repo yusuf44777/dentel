@@ -21,8 +21,8 @@ export default function Download() {
             </h2>
 
             <p className="text-blue-100 text-lg mb-10 max-w-lg mx-auto">
-              App Store ve Play Store'da yok — sınırlamalardan bağımsız,
-              sadece Üsküdar Üniversitesi öğrencilerine özel.
+              iOS'ta App Store, Android'de APK ile erişilebilir.
+              Üsküdar Üniversitesi öğrencilerine özel.
             </p>
 
             {/* Download buttons */}
@@ -45,10 +45,11 @@ export default function Download() {
                 </div>
               </a>
 
-              {/* iOS IPA */}
+              {/* iOS App Store */}
               <a
-                href="/downloads/dentel-ios.ipa"
-                download
+                href="https://apps.apple.com/us/app/dentel/id6762062276"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group flex items-center justify-center gap-4 bg-white hover:bg-slate-50 text-slate-900 font-bold px-8 py-5 rounded-2xl transition-all shadow-2xl hover:-translate-y-0.5"
               >
                 <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center flex-shrink-0">
@@ -58,27 +59,9 @@ export default function Download() {
                 </div>
                 <div className="text-left">
                   <div className="text-xs text-slate-500 font-medium">iOS İçin İndir</div>
-                  <div className="text-base font-black">IPA Dosyası</div>
+                  <div className="text-base font-black">App Store</div>
                 </div>
               </a>
-            </div>
-
-            {/* iOS installation note */}
-            <div className="bg-white/10 rounded-2xl p-4 text-left max-w-xl mx-auto">
-              <p className="text-blue-100 text-xs leading-relaxed">
-                <span className="text-white font-bold inline-flex items-center gap-1">
-                  <i className="fa fa-mobile" aria-hidden="true" />
-                  iOS Kullanıcıları:
-                </span>{" "}
-                IPA dosyasını yüklemek için{" "}
-                <span className="text-white font-semibold">AltStore</span> veya{" "}
-                <span className="text-white font-semibold">Sideloadly</span> kullanabilirsiniz.
-                Detaylı kurulum rehberi için{" "}
-                <a href="#ios-guide" className="underline text-white hover:text-blue-200">
-                  buraya tıklayın
-                </a>
-                .
-              </p>
             </div>
           </div>
         </div>

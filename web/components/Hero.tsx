@@ -50,8 +50,9 @@ export default function Hero() {
             </a>
 
             <a
-              href="/downloads/dentel-ios.ipa"
-              download
+              href="https://apps.apple.com/us/app/dentel/id6762062276"
+              target="_blank"
+              rel="noopener noreferrer"
               className="group flex items-center justify-center gap-3 bg-slate-900 hover:bg-slate-800 text-white font-bold px-7 py-4 rounded-2xl transition-all shadow-lg shadow-slate-200 hover:shadow-slate-300 hover:-translate-y-0.5"
             >
               {/* Apple icon */}
@@ -60,7 +61,7 @@ export default function Hero() {
               </svg>
               <div className="text-left">
                 <div className="text-xs opacity-80 font-normal">iOS için İndir</div>
-                <div className="text-sm font-bold">IPA Dosyası</div>
+                <div className="text-sm font-bold">App Store</div>
               </div>
             </a>
           </div>
