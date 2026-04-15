@@ -40,6 +40,7 @@ type UploadListingImageResponse = {
   storagePath?: string;
   driveViewUrl?: string;
   folderId?: string;
+  requestId?: string;
   error?: string;
 };
 
@@ -67,9 +68,32 @@ async function uploadImage(
     }
   );
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    let detailedMessage = error.message;
+
+    const responseContext = (error as { context?: Response }).context;
+    if (responseContext) {
+      try {
+        const json = (await responseContext.clone().json()) as {
+          error?: string;
+          requestId?: string;
+        };
+        if (json?.error) {
+          detailedMessage = json.requestId
+            ? `${json.error} (requestId: ${json.requestId})`
+            : json.error;
+        }
+      } catch {
+        // Response body parse edilemezse mevcut mesajla devam et.
+      }
+    }
+
+    throw new Error(detailedMessage);
+  }
+
   if (!data?.publicUrl || !data.fileId || !data.storagePath) {
-    throw new Error(data?.error ?? "Drive dosyası bilgisi alınamadı.");
+    const fallback = data?.error ?? "Drive dosyası bilgisi alınamadı.";
+    throw new Error(data?.requestId ? `${fallback} (requestId: ${data.requestId})` : fallback);
   }
 
   return {

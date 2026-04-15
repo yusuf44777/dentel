@@ -85,12 +85,26 @@ async function getDriveAccessToken(input: {
 }
 
 Deno.serve(async (req: Request) => {
+  const requestId = crypto.randomUUID();
+
+  console.log(
+    JSON.stringify({
+      level: "info",
+      event: "upload_listing_image_request_received",
+      requestId,
+      method: req.method,
+    })
+  );
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
   }
 
   if (req.method !== "POST") {
-    return jsonResponse(405, { error: "Yalnızca POST desteklenir." });
+    return jsonResponse(405, {
+      error: "Yalnızca POST desteklenir.",
+      requestId,
+    });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -110,11 +124,22 @@ Deno.serve(async (req: Request) => {
     !googleRefreshToken ||
     !googleFolderId
   ) {
-    return jsonResponse(500, { error: "Sunucu ortam değişkenleri eksik." });
+    console.log(
+      JSON.stringify({
+        level: "error",
+        event: "upload_listing_image_missing_env",
+        requestId,
+      })
+    );
+
+    return jsonResponse(500, {
+      error: "Sunucu ortam değişkenleri eksik.",
+      requestId,
+    });
   }
 
   if (!authHeader) {
-    return jsonResponse(401, { error: "Yetkisiz istek." });
+    return jsonResponse(401, { error: "Yetkisiz istek.", requestId });
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -127,14 +152,20 @@ Deno.serve(async (req: Request) => {
   } = await userClient.auth.getUser();
 
   if (userError || !user) {
-    return jsonResponse(401, { error: "Kullanıcı doğrulanamadı." });
+    return jsonResponse(401, {
+      error: "Kullanıcı doğrulanamadı.",
+      requestId,
+    });
   }
 
   let payload: UploadPayload;
   try {
     payload = await req.json();
   } catch {
-    return jsonResponse(400, { error: "Geçersiz JSON gövdesi." });
+    return jsonResponse(400, {
+      error: "Geçersiz JSON gövdesi.",
+      requestId,
+    });
   }
 
   if (
@@ -143,15 +174,18 @@ Deno.serve(async (req: Request) => {
     !payload?.mimeType ||
     typeof payload.index !== "number"
   ) {
-    return jsonResponse(400, { error: "Zorunlu alanlar eksik." });
+    return jsonResponse(400, { error: "Zorunlu alanlar eksik.", requestId });
   }
 
   if (!payload.mimeType.startsWith("image/")) {
-    return jsonResponse(400, { error: "Yalnızca görsel dosyaları yüklenebilir." });
+    return jsonResponse(400, {
+      error: "Yalnızca görsel dosyaları yüklenebilir.",
+      requestId,
+    });
   }
 
   if (!Number.isInteger(payload.index) || payload.index < 0 || payload.index > 32) {
-    return jsonResponse(400, { error: "Geçersiz fotoğraf sırası." });
+    return jsonResponse(400, { error: "Geçersiz fotoğraf sırası.", requestId });
   }
 
   let createdFileId: string | null = null;
@@ -161,8 +195,24 @@ Deno.serve(async (req: Request) => {
     const bytes = decodeBase64(payload.imageBase64);
     const maxBytes = 12 * 1024 * 1024;
     if (bytes.byteLength > maxBytes) {
-      return jsonResponse(413, { error: "Fotoğraf boyutu çok büyük (maks. 12MB)." });
+      return jsonResponse(413, {
+        error: "Fotoğraf boyutu çok büyük (maks. 12MB).",
+        requestId,
+      });
     }
+
+    console.log(
+      JSON.stringify({
+        level: "info",
+        event: "upload_listing_image_validated",
+        requestId,
+        userId: user.id,
+        listingId: payload.listingId,
+        index: payload.index,
+        mimeType: payload.mimeType,
+        bytes: bytes.byteLength,
+      })
+    );
 
     driveAccessToken = await getDriveAccessToken({
       clientId: googleClientId,
@@ -203,6 +253,16 @@ Deno.serve(async (req: Request) => {
     const fileId = createJson.id as string;
     createdFileId = fileId;
 
+    console.log(
+      JSON.stringify({
+        level: "info",
+        event: "upload_listing_image_drive_file_created",
+        requestId,
+        fileId,
+        folderId: googleFolderId,
+      })
+    );
+
     const mediaResponse = await fetch(
       `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`,
       {
@@ -241,6 +301,16 @@ Deno.serve(async (req: Request) => {
     }
 
     const publicUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+    console.log(
+      JSON.stringify({
+        level: "info",
+        event: "upload_listing_image_success",
+        requestId,
+        fileId,
+        storagePath,
+      })
+    );
+
     return jsonResponse(200, {
       success: true,
       fileId,
@@ -248,6 +318,7 @@ Deno.serve(async (req: Request) => {
       publicUrl,
       driveViewUrl: createJson.webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`,
       folderId: googleFolderId,
+      requestId,
     });
   } catch (error) {
     if (createdFileId && driveAccessToken) {
@@ -258,6 +329,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const message = error instanceof Error ? error.message : "Fotoğraf yüklenemedi.";
-    return jsonResponse(500, { error: message });
+    console.log(
+      JSON.stringify({
+        level: "error",
+        event: "upload_listing_image_error",
+        requestId,
+        message,
+      })
+    );
+
+    return jsonResponse(500, { error: message, requestId });
   }
 });
