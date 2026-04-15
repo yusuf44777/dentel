@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -30,6 +30,7 @@ export default function ListingEditScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const scrollRef = useRef<ScrollView>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -41,6 +42,14 @@ export default function ListingEditScreen() {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState<string>("other");
   const [status, setStatus] = useState<ListingStatus>("active");
+
+  const keepFocusedInputVisible = useCallback(() => {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 80);
+    });
+  }, []);
 
   const loadListing = useCallback(async () => {
     const { data, error } = await supabase
@@ -140,15 +149,16 @@ export default function ListingEditScreen() {
     <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
+          ref={scrollRef}
           className="flex-1 px-4 pt-2"
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-          automaticallyAdjustKeyboardInsets
-          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 40) }}
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 120, 168) }}
         >
         <View className="flex-row items-center mb-4">
           <TouchableOpacity onPress={() => router.back()} className="mr-2">
@@ -169,6 +179,7 @@ export default function ListingEditScreen() {
           value={description}
           onChangeText={setDescription}
           placeholder="İlan açıklaması"
+          onFocus={keepFocusedInputVisible}
           multiline
           numberOfLines={4}
         />
@@ -179,6 +190,7 @@ export default function ListingEditScreen() {
           onChangeText={setPrice}
           keyboardType="numeric"
           placeholder="0"
+          onFocus={keepFocusedInputVisible}
         />
 
         <View className="mb-4">

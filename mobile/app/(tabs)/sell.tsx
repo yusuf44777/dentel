@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -107,6 +107,7 @@ export default function SellScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const scrollRef = useRef<ScrollView>(null);
 
   const [images, setImages] = useState<PickedImage[]>([]);
   const [title, setTitle] = useState("");
@@ -117,6 +118,14 @@ export default function SellScreen() {
   const [loading, setLoading] = useState(false);
   const [uploadStep, setUploadStep] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  function keepFocusedInputVisible() {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 80);
+    });
+  }
 
   function addPickedAssets(
     assets: ImagePicker.ImagePickerAsset[],
@@ -250,22 +259,23 @@ export default function SellScreen() {
     <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
       >
         <View className="px-4 pt-2 pb-3 border-b border-slate-100 flex-row items-center">
           <Text className="text-xl font-bold text-slate-900 flex-1">İlan Ver</Text>
         </View>
 
         <ScrollView
+          ref={scrollRef}
           className="flex-1"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-          automaticallyAdjustKeyboardInsets
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           contentContainerStyle={{
             padding: 16,
-            paddingBottom: Math.max(insets.bottom + 48, 72),
+            paddingBottom: Math.max(insets.bottom + 120, 168),
           }}
         >
           {/* ── Image picker ── */}
@@ -404,6 +414,8 @@ export default function SellScreen() {
                 value={price}
                 onChangeText={setPrice}
                 keyboardType="numeric"
+                onFocus={keepFocusedInputVisible}
+                returnKeyType="done"
               />
             </View>
             {errors.price && <Text className="text-danger text-xs mt-1">{errors.price}</Text>}
@@ -421,6 +433,7 @@ export default function SellScreen() {
                 placeholderTextColor={Colors.muted}
                 value={description}
                 onChangeText={setDescription}
+                onFocus={keepFocusedInputVisible}
                 multiline
                 numberOfLines={4}
                 style={{ minHeight: 90, textAlignVertical: "top" }}
