@@ -54,11 +54,11 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>dentel needs access to your camera to take listing photos.</string>
+    <string>dentel, ilan fotoğrafları çekebilmek için kamerana erişim ister.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>dentel needs access to your photos to upload listing images.</string>
+    <string>dentel, ilan fotoğrafları yükleyebilmek için galeri erişimi ister.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
