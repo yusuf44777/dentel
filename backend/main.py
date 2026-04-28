@@ -90,7 +90,7 @@ def _check_rate_limit(ip: str) -> bool:
 # ── Input doğrulama ───────────────────────────────────────────────────────────
 
 _RE_BARCODE_SAFE = re.compile(r"^[A-Z0-9\-]{8,30}$")
-_RE_PHONE_SAFE = re.compile(r"^\+?[0-9 ]{10,18}$")
+_RE_PHONE_SAFE = re.compile(r"^\+?[0-9]{10,15}$")
 
 _DB_PATH = Path(os.getenv("STUDENT_DB_PATH", "/tmp/dentel_students.sqlite3"))
 _PASSWORD_ITERATIONS = 210_000
@@ -116,7 +116,7 @@ def _init_db() -> None:
             id integer primary key autoincrement,
             full_name text not null,
             email text not null unique,
-            phone text not null,
+            phone text not null unique,
             university text not null,
             department text not null,
             class_level text not null,
@@ -132,6 +132,17 @@ def _init_db() -> None:
       conn.execute(
           "create index if not exists idx_verified_students_email on verified_students(email)"
       )
+      conn.execute(
+          "update verified_students set phone = replace(phone, ' ', '') where phone like '% %'"
+      )
+      try:
+          conn.execute(
+              "create unique index if not exists idx_verified_students_phone on verified_students(phone)"
+          )
+      except sqlite3.IntegrityError:
+          # Eski veride yinelenen telefon varsa uygulama açılmaya devam etsin;
+          # yeni kayıtlar yine uygulama kontrolünden geçer.
+          pass
 
 
 _init_db()
@@ -158,10 +169,38 @@ def _validate_email(value: Optional[str]) -> str:
 
 
 def _validate_phone(value: Optional[str]) -> str:
-    cleaned = re.sub(r"\s+", " ", (value or "").strip())
+    cleaned = re.sub(r"\s+", "", (value or "").strip())
     if not _RE_PHONE_SAFE.match(cleaned):
         raise HTTPException(status_code=422, detail="Geçerli bir telefon numarası girin.")
     return cleaned
+
+
+def _find_existing_student_contact(email: str, phone: str) -> Optional[str]:
+    with _connect_db() as conn:
+        row = conn.execute(
+            """
+            select email, phone
+            from verified_students
+            where email = ?
+               or replace(phone, ' ', '') = ?
+            limit 1
+            """,
+            (email, phone),
+        ).fetchone()
+
+    if not row:
+        return None
+    if row["email"] == email:
+        return "email"
+    return "phone"
+
+
+def _ensure_student_contact_available(email: str, phone: str) -> None:
+    existing = _find_existing_student_contact(email, phone)
+    if existing == "email":
+        raise HTTPException(status_code=409, detail="Bu e-posta adresiyle zaten kayıt var.")
+    if existing == "phone":
+        raise HTTPException(status_code=409, detail="Bu telefon numarasıyla zaten kayıt var.")
 
 
 def _validate_password(value: Optional[str]) -> str:
@@ -219,46 +258,39 @@ def _save_verified_student(
     barcode_hash = _hash_barcode(barcode)
 
     with _connect_db() as conn:
-        conn.execute(
-            """
-            insert into verified_students (
-              full_name,
-              email,
-              phone,
-              university,
-              department,
-              class_level,
-              password_hash,
-              tc_masked,
-              document_barcode_hash,
-              verified_at
+        try:
+            conn.execute(
+                """
+                insert into verified_students (
+                  full_name,
+                  email,
+                  phone,
+                  university,
+                  department,
+                  class_level,
+                  password_hash,
+                  tc_masked,
+                  document_barcode_hash,
+                  verified_at
+                )
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    full_name,
+                    email,
+                    phone,
+                    university,
+                    department,
+                    class_level,
+                    password_hash,
+                    tc_masked,
+                    barcode_hash,
+                    verified_at,
+                ),
             )
-            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            on conflict(email) do update set
-              full_name = excluded.full_name,
-              phone = excluded.phone,
-              university = excluded.university,
-              department = excluded.department,
-              class_level = excluded.class_level,
-              password_hash = excluded.password_hash,
-              tc_masked = excluded.tc_masked,
-              document_barcode_hash = excluded.document_barcode_hash,
-              verified_at = excluded.verified_at,
-              updated_at = current_timestamp
-            """,
-            (
-                full_name,
-                email,
-                phone,
-                university,
-                department,
-                class_level,
-                password_hash,
-                tc_masked,
-                barcode_hash,
-                verified_at,
-            ),
-        )
+        except sqlite3.IntegrityError:
+            _ensure_student_contact_available(email, phone)
+            raise HTTPException(status_code=409, detail="Bu bilgilerle zaten kayıt var.")
 
         row = conn.execute(
             """
@@ -417,7 +449,7 @@ async def student_register_stream(
     full_name: str = Form(...),
     email: str = Form(...),
     phone: str = Form(...),
-    university: str = Form("Üsküdar Üniversitesi"),
+    university: str = Form(""),
     department: str = Form("Diş Hekimliği"),
     class_level: str = Form(...),
     password: str = Form(...),
@@ -437,6 +469,7 @@ async def student_register_stream(
         "class_level": _validate_text_field(class_level, "Sınıf", min_len=1, max_len=40),
         "password": _validate_password(password),
     }
+    _ensure_student_contact_available(student_input["email"], student_input["phone"])
 
     info = await _extract_pdf_info(file)
     tc_number, barcode = _resolve_document_fields(info, tc_override, barcode_override)
@@ -493,17 +526,26 @@ async def student_register_stream(
             })
             return
 
-        student = _save_verified_student(
-            full_name=student_input["full_name"],
-            email=student_input["email"],
-            phone=student_input["phone"],
-            university=student_input["university"],
-            department=student_input["department"],
-            class_level=student_input["class_level"],
-            password=student_input["password"],
-            tc_masked=tc_masked,
-            barcode=barcode,
-        )
+        try:
+            student = _save_verified_student(
+                full_name=student_input["full_name"],
+                email=student_input["email"],
+                phone=student_input["phone"],
+                university=student_input["university"],
+                department=student_input["department"],
+                class_level=student_input["class_level"],
+                password=student_input["password"],
+                tc_masked=tc_masked,
+                barcode=barcode,
+            )
+        except HTTPException as exc:
+            yield _sse({
+                "step": "registration_failed",
+                "progress": 100,
+                "message": exc.detail,
+                "result": final_result,
+            })
+            return
 
         yield _sse({
             "step": "registered",

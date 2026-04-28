@@ -20,11 +20,11 @@ import { Input } from "../../components/ui/Input";
 import { BrandMark } from "../../components/BrandMark";
 import { Colors } from "../../constants/colors";
 
-const ALLOWED_DOMAIN = "st.uskudar.edu.tr";
 const STUDENT_DOCUMENT_URL = "https://www.turkiye.gov.tr/yok-ogrenci-belgesi-sorgulama";
 const STUDENT_VERIFIER_URL =
   process.env.EXPO_PUBLIC_STUDENT_VERIFIER_URL ??
   "https://restasismed-dentel-yok-belge-dogrulama.hf.space";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const YEARS = [
   { label: "Hazırlık", value: "prep" },
@@ -65,8 +65,8 @@ export default function RegisterScreen() {
     if (!fullName.trim()) return "Lütfen adınızı girin.";
     if (!email.trim()) return "Lütfen e-posta adresinizi girin.";
     const emailLower = email.trim().toLowerCase();
-    if (!emailLower.endsWith(`@${ALLOWED_DOMAIN}`)) {
-      return `Yalnızca @${ALLOWED_DOMAIN} e-posta adresleri kabul edilmektedir.`;
+    if (!EMAIL_PATTERN.test(emailLower)) {
+      return "Geçerli bir e-posta adresi girin.";
     }
     if (!year) return "Lütfen sınıfınızı seçin.";
     const phone = whatsapp.trim().replace(/\D/g, "");
@@ -149,6 +149,23 @@ export default function RegisterScreen() {
     };
   }
 
+  async function checkContactAvailability(normalizedEmail: string, whatsappNumber: string) {
+    const { data, error: contactError } = await supabase.rpc("registration_contact_conflict", {
+      p_email: normalizedEmail,
+      p_whatsapp: whatsappNumber,
+    });
+
+    if (contactError) {
+      throw contactError;
+    }
+    if (data === "email") {
+      throw new Error("Bu e-posta adresiyle zaten bir hesap var.");
+    }
+    if (data === "phone") {
+      throw new Error("Bu telefon numarasıyla zaten bir hesap var.");
+    }
+  }
+
   async function handleRegister() {
     const validationError = validate();
     if (validationError) {
@@ -165,6 +182,8 @@ export default function RegisterScreen() {
     let verifiedDocument: Awaited<ReturnType<typeof verifyStudentDocument>>;
 
     try {
+      setLoadingMessage("Bilgiler kontrol ediliyor...");
+      await checkContactAvailability(normalizedEmail, whatsappNumber);
       setLoadingMessage("Öğrenci belgesi doğrulanıyor...");
       verifiedDocument = await verifyStudentDocument();
       setVerificationInfo({
@@ -339,7 +358,7 @@ export default function RegisterScreen() {
               </Text>
             </View>
             <Text className="text-slate-500 mt-2 text-base">
-              Üsküdar Üniversitesi Diş Hekimliği
+              Diş Hekimliği Öğrenci Platformu
             </Text>
           </View>
 
@@ -348,7 +367,7 @@ export default function RegisterScreen() {
               Kayıt Ol
             </Text>
             <Text className="text-slate-500 mb-6 text-sm">
-              Üniversite e-postanla ücretsiz hesap oluştur.
+              E-posta adresinle ücretsiz hesap oluştur.
             </Text>
 
             {error && (
@@ -367,8 +386,8 @@ export default function RegisterScreen() {
             />
 
             <Input
-              label="Üniversite E-postası"
-              placeholder={`adiniz@${ALLOWED_DOMAIN}`}
+              label="E-posta"
+              placeholder="adiniz@example.com"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"

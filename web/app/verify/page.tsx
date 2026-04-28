@@ -81,7 +81,7 @@ const initialRegisterForm: RegisterForm = {
   fullName: "",
   email: "",
   phone: "",
-  university: "Üsküdar Üniversitesi",
+  university: "",
   department: "Diş Hekimliği",
   classLevel: "",
   password: "",
@@ -211,7 +211,7 @@ export default function VerifyPage() {
           }
           if (event.step === "registration_failed") {
             setPhase("error");
-            setErrorMsg("Belge doğrulanmadığı için kayıt oluşturulmadı.");
+            setErrorMsg(event.message || "Kayıt oluşturulmadı.");
           }
         } catch {
           // SSE parçası bozuksa akışı kesmeden devam et.
@@ -440,7 +440,7 @@ export default function VerifyPage() {
                       type="email"
                       value={loginEmail}
                       onChange={setLoginEmail}
-                      placeholder="ogrenci@st.uskudar.edu.tr"
+                      placeholder="adiniz@example.com"
                     />
                     <Field
                       label="Şifre"
@@ -471,7 +471,7 @@ export default function VerifyPage() {
                       type="email"
                       value={registerForm.email}
                       onChange={(value) => updateRegisterField("email", value)}
-                      placeholder="ogrenci@st.uskudar.edu.tr"
+                      placeholder="adiniz@example.com"
                     />
                     <Field
                       label="Telefon"
@@ -484,6 +484,7 @@ export default function VerifyPage() {
                         label="Üniversite"
                         value={registerForm.university}
                         onChange={(value) => updateRegisterField("university", value)}
+                        placeholder="Üniversiteniz"
                       />
                       <Field
                         label="Bölüm"

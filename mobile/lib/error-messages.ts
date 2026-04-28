@@ -41,6 +41,18 @@ export function getTurkishErrorMessage(
   if (message.includes("user already registered")) {
     return "Bu e-posta adresiyle zaten bir hesap var.";
   }
+  if (
+    message.includes("profiles_email_key") ||
+    (message.includes("duplicate key") && message.includes("email"))
+  ) {
+    return "Bu e-posta adresiyle zaten bir hesap var.";
+  }
+  if (message.includes("idx_profiles_whatsapp_unique") || message.includes("profiles_whatsapp_key")) {
+    return "Bu telefon numarasıyla zaten bir hesap var.";
+  }
+  if (message.includes("database error saving new user")) {
+    return "Bu e-posta veya telefon numarasıyla zaten kayıt olabilir. Bilgilerini kontrol edip tekrar dene.";
+  }
   if (message.includes("password should be at least")) {
     return "Şifre en az 6 karakter olmalıdır.";
   }

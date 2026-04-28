@@ -74,7 +74,7 @@ export default function LoginScreen() {
               </Text>
             </View>
             <Text className="text-slate-500 mt-2 text-base">
-              Üsküdar Üniversitesi Diş Hekimliği
+              Diş Hekimliği Öğrenci Platformu
             </Text>
           </View>
 
@@ -95,7 +95,7 @@ export default function LoginScreen() {
 
             <Input
               label="E-posta"
-              placeholder="adiniz@st.uskudar.edu.tr"
+              placeholder="adiniz@example.com"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"

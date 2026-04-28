@@ -322,9 +322,9 @@ export default function ProfileScreen() {
             value={user?.email ?? "-"}
           />
           <InfoRow
-            icon="school-outline"
-            label="Üniversite"
-            value="Üsküdar Üniversitesi"
+            icon="shield-checkmark-outline"
+            label="Durum"
+            value={profile?.student_document_verified ? "Doğrulanmış öğrenci" : "Öğrenci hesabı"}
           />
         </View>
 

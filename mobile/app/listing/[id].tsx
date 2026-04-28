@@ -600,8 +600,7 @@ export default function ListingDetailScreen() {
               </Text>
               {seller?.university_year && (
                 <Text className="text-muted text-sm">
-                  {YEAR_LABELS[seller.university_year] ?? seller.university_year} •{" "}
-                  Üsküdar Üniversitesi
+                  {YEAR_LABELS[seller.university_year] ?? seller.university_year}
                 </Text>
               )}
             </View>
