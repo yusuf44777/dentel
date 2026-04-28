@@ -5,14 +5,13 @@ const BASE_URL = "https://denteluskudar.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
-  title: "dentel — Üsküdar Üniversitesi Dental Malzeme Platformu",
+  title: "dentel — Dental Malzeme Platformu",
   description:
-    "Diş hekimliği öğrencileri için ikinci el dental alet, kitap ve malzeme alım-satım uygulaması. Üsküdar Üniversitesi öğrencilerine özel.",
+    "Diş hekimliği öğrencileri için ikinci el dental alet, kitap ve malzeme alım-satım uygulaması. Üsküdar Üniversitesi öğrencileri tarafından geliştirildi.",
   keywords: [
     "dental malzeme",
     "diş hekimliği",
     "ikinci el",
-    "üsküdar üniversitesi",
     "dental alet",
     "diş hekimliği öğrenci",
     "dental kit",
@@ -22,9 +21,9 @@ export const metadata: Metadata = {
     canonical: BASE_URL,
   },
   openGraph: {
-    title: "dentel — Üsküdar Üniversitesi Dental Malzeme Platformu",
+    title: "dentel — Dental Malzeme Platformu",
     description:
-      "Kullanmadığın dental aletleri sat, ihtiyacın olanı uygun fiyata bul. Üsküdar Üniversitesi diş hekimliği öğrencilerine özel uygulama.",
+      "Kullanmadığın dental aletleri sat, ihtiyacın olanı uygun fiyata bul. Diş hekimliği öğrencileri için geliştirilen ücretsiz uygulama.",
     type: "website",
     url: BASE_URL,
     siteName: "dentel",
@@ -39,9 +38,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "dentel — Üsküdar Üniversitesi Dental Malzeme Platformu",
+    title: "dentel — Dental Malzeme Platformu",
     description:
-      "Kullanmadığın dental aletleri sat, ihtiyacın olanı uygun fiyata bul. Üsküdar Üniversitesi diş hekimliği öğrencilerine özel.",
+      "Kullanmadığın dental aletleri sat, ihtiyacın olanı uygun fiyata bul. Üsküdar Üniversitesi öğrencileri tarafından geliştirildi.",
     images: ["/og-image.png"],
   },
   icons: {
@@ -64,7 +63,7 @@ const jsonLd = {
   "@type": "MobileApplication",
   name: "dentel",
   description:
-    "Diş hekimliği öğrencileri için ikinci el dental alet, kitap ve malzeme alım-satım uygulaması. Üsküdar Üniversitesi öğrencilerine özel.",
+    "Diş hekimliği öğrencileri için ikinci el dental alet, kitap ve malzeme alım-satım uygulaması. Üsküdar Üniversitesi öğrencileri tarafından geliştirildi.",
   url: "https://denteluskudar.vercel.app",
   applicationCategory: "LifestyleApplication",
   operatingSystem: "Android, iOS",

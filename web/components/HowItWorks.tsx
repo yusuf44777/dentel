@@ -3,7 +3,7 @@ const steps = [
     step: "01",
     title: "Hesap Oluştur",
     description:
-      "Üsküdar Üniversitesi e-postanla (@st.uskudar.edu.tr) ücretsiz kayıt ol. 30 saniye sürer.",
+      "E-posta adresin ve öğrenci belgenle ücretsiz kayıt ol. 30 saniye sürer.",
     iconClass: "fa-graduation-cap",
     color: "bg-blue-600",
   },
@@ -112,7 +112,7 @@ export default function HowItWorks() {
               {[
                 "Üst sınıflar kullanmadığı aleti satar, cebine para girer",
                 "Alt sınıflar indirimli, güvenilir malzeme bulur",
-                "Kampüs içi topluluk — hızlı, güvenilir, kolay",
+                "Öğrenci topluluğu — hızlı, güvenilir, kolay",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2">
                   <i className="fa fa-check text-emerald-500 mt-1" aria-hidden="true" />

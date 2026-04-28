@@ -58,9 +58,10 @@ export default function PrivacyPage() {
               hizmetlerde kişisel verilerin nasıl işlendiğini açıklar.
             </p>
             <p>
-              dentel; Üsküdar Üniversitesi Diş Hekimliği Fakültesi öğrencileri
-              arasında ikinci el dental malzeme alım-satımını kolaylaştırmak
-              amacıyla geliştirilmiş bir platformdur.
+              dentel; diş hekimliği öğrencileri arasında ikinci el dental
+              malzeme alım-satımını kolaylaştırmak amacıyla geliştirilmiş bir
+              platformdur. Platform, Üsküdar Üniversitesi öğrencileri tarafından
+              geliştirilmiştir.
             </p>
             <p>
               Bu metin; uygulama içi kayıt, giriş, ilan oluşturma, favorileme,
@@ -79,7 +80,10 @@ export default function PrivacyPage() {
               adresi:
             </p>
             <p>
-              <strong>E-posta:</strong> dentelapp@st.uskudar.edu.tr
+              <strong>E-posta:</strong>{" "}
+              <a className="text-primary font-semibold" href="mailto:dentelapp@st.uskudar.edu.tr">
+                E-posta ile iletişime geçin
+              </a>
             </p>
           </Section>
 
@@ -87,9 +91,8 @@ export default function PrivacyPage() {
             <p>Uygulama kapsamında aşağıdaki veri kategorileri işlenebilir:</p>
             <ul className="list-disc pl-5 space-y-2">
               <li>
-                <strong>Hesap verileri:</strong> Üniversite e-posta adresi
-                (<code>@st.uskudar.edu.tr</code>), ad-soyad, sınıf bilgisi,
-                WhatsApp numarası.
+                <strong>Hesap verileri:</strong> E-posta adresi, ad-soyad,
+                sınıf bilgisi, WhatsApp numarası.
               </li>
               <li>
                 <strong>Kimlik doğrulama verileri:</strong> Şifre ve oturum
@@ -253,7 +256,10 @@ export default function PrivacyPage() {
             </p>
             <p>
               Bu haklara ilişkin taleplerinizi{" "}
-              <strong>dentelapp@st.uskudar.edu.tr</strong> adresine iletebilirsiniz.
+              <a className="text-primary font-semibold" href="mailto:dentelapp@st.uskudar.edu.tr">
+                E-posta ile iletişime geçin
+              </a>{" "}
+              bağlantısı üzerinden iletebilirsiniz.
               Başvurular, yürürlükteki mevzuat çerçevesinde değerlendirilir.
             </p>
           </Section>

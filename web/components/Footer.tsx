@@ -11,8 +11,8 @@ export default function Footer() {
               <BrandLogo textClassName="text-white" iconClassName="w-9 h-9" />
             </div>
             <p className="text-sm leading-relaxed">
-              Üsküdar Üniversitesi Diş Hekimliği Fakültesi öğrencilerine özel
-              ikinci el dental malzeme platformu.
+              Diş hekimliği öğrencileri için ikinci el dental malzeme
+              platformu.
             </p>
           </div>
 
@@ -52,8 +52,8 @@ export default function Footer() {
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
           <p>© {new Date().getFullYear()} dentel. Tüm hakları saklıdır.</p>
           <p>
-            Üsküdar Üniversitesi Diş Hekimliği Fakültesi •{" "}
-            <span className="text-primary">Öğrenci Projesi</span>
+            <span className="text-primary">Üsküdar Üniversitesi öğrencileri</span>{" "}
+            tarafından geliştirildi
           </p>
         </div>
       </div>

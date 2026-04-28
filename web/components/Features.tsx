@@ -33,9 +33,9 @@ const features = [
   },
   {
     iconClass: "fa-graduation-cap",
-    title: "Sadece Üsküdar Öğrencileri",
+    title: "Doğrulanmış Öğrenci Topluluğu",
     description:
-      "@st.uskudar.edu.tr e-postanla kayıt ol. Güvenilir, doğrulanmış topluluk.",
+      "Öğrenci belgenle doğrulan, güvenilir diş hekimliği topluluğuna katıl.",
     color: "from-rose-50 to-rose-100",
     iconBg: "bg-rose-100",
   },

@@ -22,7 +22,7 @@ export default function Download() {
 
             <p className="text-blue-100 text-lg mb-10 max-w-lg mx-auto">
               iOS'ta App Store, Android'de APK ile erişilebilir.
-              Üsküdar Üniversitesi öğrencilerine özel.
+              Diş hekimliği öğrencileri için ücretsiz.
             </p>
 
             {/* Download buttons */}

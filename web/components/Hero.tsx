@@ -15,7 +15,7 @@ export default function Hero() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-primary text-sm font-semibold px-4 py-2 rounded-full mb-8">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Üsküdar Üniversitesi • Diş Hekimliği
+            Diş hekimliği öğrencileri için
           </div>
 
           <h1 className="text-5xl md:text-6xl font-black text-slate-900 leading-[1.05] tracking-tight text-balance mb-6">
@@ -79,7 +79,7 @@ export default function Hero() {
               ))}
             </div>
             <span>
-              <strong className="text-slate-900">Üsküdar Üniversitesi</strong> öğrencilerine özel
+              <strong className="text-slate-900">Üsküdar Üniversitesi öğrencileri</strong> tarafından geliştirildi
             </span>
           </div>
         </div>
