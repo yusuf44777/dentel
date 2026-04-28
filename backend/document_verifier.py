@@ -105,7 +105,6 @@ _INVALID_MARKERS = [
 _RESULT_STOP_MARKERS = [
     *_SUCCESS_MARKERS,
     *_INVALID_MARKERS,
-    "işlem sonucu",
 ]
 
 
