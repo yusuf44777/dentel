@@ -12,6 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
+import * as DocumentPicker from "expo-document-picker";
 import { supabase } from "../../lib/supabase";
 import { getTurkishErrorMessage } from "../../lib/error-messages";
 import { Button } from "../../components/ui/Button";
@@ -20,6 +21,10 @@ import { BrandMark } from "../../components/BrandMark";
 import { Colors } from "../../constants/colors";
 
 const ALLOWED_DOMAIN = "st.uskudar.edu.tr";
+const STUDENT_DOCUMENT_URL = "https://www.turkiye.gov.tr/yok-ogrenci-belgesi-sorgulama";
+const STUDENT_VERIFIER_URL =
+  process.env.EXPO_PUBLIC_STUDENT_VERIFIER_URL ??
+  "https://restasismed-dentel-yok-belge-dogrulama.hf.space";
 
 const YEARS = [
   { label: "Hazırlık", value: "prep" },
@@ -41,6 +46,13 @@ export default function RegisterScreen() {
   const [showYearPicker, setShowYearPicker] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [studentDocument, setStudentDocument] =
+    useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [verificationInfo, setVerificationInfo] = useState<{
+    barcode?: string;
+    tcMasked?: string | null;
+  } | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +73,80 @@ export default function RegisterScreen() {
     if (!phone || phone.length < 10) return "Geçerli bir WhatsApp numarası girin.";
     if (password.length < 6) return "Şifre en az 6 karakter olmalıdır.";
     if (password !== confirmPassword) return "Şifreler eşleşmiyor.";
+    if (!studentDocument) return "e-Devlet öğrenci belgesini PDF olarak yüklemelisin.";
     return null;
+  }
+
+  async function openStudentDocumentSource() {
+    await Linking.openURL(STUDENT_DOCUMENT_URL);
+  }
+
+  async function pickStudentDocument() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    if (!asset) return;
+
+    if (asset.size && asset.size > 20 * 1024 * 1024) {
+      setError("Öğrenci belgesi 20 MB'dan büyük olamaz.");
+      return;
+    }
+
+    setStudentDocument(asset);
+    setVerificationInfo(null);
+    setError(null);
+  }
+
+  async function verifyStudentDocument() {
+    if (!studentDocument) {
+      throw new Error("Öğrenci belgesi PDF'i seçilmedi.");
+    }
+
+    const form = new FormData();
+    form.append("file", {
+      uri: studentDocument.uri,
+      name: studentDocument.name || "ogrenci-belgesi.pdf",
+      type: studentDocument.mimeType || "application/pdf",
+    } as any);
+
+    const response = await fetch(`${STUDENT_VERIFIER_URL.replace(/\/$/, "")}/verify`, {
+      method: "POST",
+      body: form,
+    });
+
+    const data = await response.json().catch(() => null) as {
+      detail?: string;
+      barcode?: string;
+      tc_masked?: string | null;
+      result?: {
+        valid: boolean | null;
+        valid_label?: string;
+        error?: string | null;
+      };
+    } | null;
+
+    if (!response.ok) {
+      throw new Error(data?.detail ?? "Öğrenci belgesi doğrulanamadı.");
+    }
+
+    if (data?.result?.valid !== true) {
+      throw new Error(
+        data?.result?.error ??
+          "Öğrenci belgesi e-Devlet üzerinde geçerli olarak doğrulanamadı."
+      );
+    }
+
+    return {
+      barcode: data.barcode,
+      tcMasked: data.tc_masked,
+      label: data.result.valid_label ?? "GERÇEK",
+    };
   }
 
   async function handleRegister() {
@@ -72,9 +157,33 @@ export default function RegisterScreen() {
     }
     setError(null);
     setInfo(null);
+    setVerificationInfo(null);
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
+    const phone = whatsapp.trim().replace(/\D/g, "");
+    const whatsappNumber = phone.startsWith("90") ? phone : `90${phone.replace(/^0/, "")}`;
+    let verifiedDocument: Awaited<ReturnType<typeof verifyStudentDocument>>;
 
+    try {
+      setLoadingMessage("Öğrenci belgesi doğrulanıyor...");
+      verifiedDocument = await verifyStudentDocument();
+      setVerificationInfo({
+        barcode: verifiedDocument.barcode,
+        tcMasked: verifiedDocument.tcMasked,
+      });
+    } catch (err) {
+      setError(
+        getTurkishErrorMessage(
+          err,
+          err instanceof Error ? err.message : "Öğrenci belgesi doğrulanamadı."
+        )
+      );
+      setLoading(false);
+      setLoadingMessage("");
+      return;
+    }
+
+    setLoadingMessage("Hesap oluşturuluyor...");
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
@@ -83,6 +192,11 @@ export default function RegisterScreen() {
         data: {
           full_name: fullName.trim(),
           university_year: year,
+          whatsapp: whatsappNumber,
+          student_document_verified: true,
+          student_document_barcode: verifiedDocument.barcode,
+          student_document_tc_masked: verifiedDocument.tcMasked,
+          student_document_verified_at: new Date().toISOString(),
         },
       },
     });
@@ -95,16 +209,23 @@ export default function RegisterScreen() {
         )
       );
       setLoading(false);
+      setLoadingMessage("");
       return;
     }
 
     // Update the profile row created by the trigger
     if (data.user) {
-      const phone = whatsapp.trim().replace(/\D/g, "");
-      const whatsappNumber = phone.startsWith("90") ? phone : `90${phone.replace(/^0/, "")}`;
       await supabase
         .from("profiles")
-        .update({ full_name: fullName.trim(), university_year: year, whatsapp: whatsappNumber })
+        .update({
+          full_name: fullName.trim(),
+          university_year: year,
+          whatsapp: whatsappNumber,
+          student_document_verified: true,
+          student_document_barcode: verifiedDocument.barcode,
+          student_document_tc_masked: verifiedDocument.tcMasked,
+          student_document_verified_at: new Date().toISOString(),
+        })
         .eq("id", data.user.id);
     }
 
@@ -112,6 +233,7 @@ export default function RegisterScreen() {
     setNeedsEmailVerification(!data.session);
     setSuccess(true);
     setLoading(false);
+    setLoadingMessage("");
   }
 
   async function handleResendConfirmation() {
@@ -326,8 +448,66 @@ export default function RegisterScreen() {
               textContentType="newPassword"
             />
 
+            <View className="mb-4 bg-white border border-slate-200 rounded-2xl p-4">
+              <View className="flex-row items-start justify-between gap-3">
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-slate-900">
+                    e-Devlet Öğrenci Belgesi
+                  </Text>
+                  <Text className="text-xs text-slate-500 mt-1 leading-5">
+                    Belgeyi YÖK Öğrenci Belgesi Sorgulama sayfasından PDF olarak indirip yükle.
+                  </Text>
+                </View>
+                <Ionicons name="shield-checkmark-outline" size={24} color={Colors.primary} />
+              </View>
+
+              <View className="flex-row gap-2 mt-3">
+                <TouchableOpacity
+                  onPress={() => {
+                    void openStudentDocumentSource();
+                  }}
+                  className="flex-1 bg-slate-100 rounded-xl px-3 py-3 flex-row items-center justify-center gap-2"
+                >
+                  <Ionicons name="open-outline" size={16} color={Colors.text.primary} />
+                  <Text className="text-slate-800 text-sm font-semibold">Belgeyi Al</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    void pickStudentDocument();
+                  }}
+                  className="flex-1 bg-primary rounded-xl px-3 py-3 flex-row items-center justify-center gap-2"
+                >
+                  <Ionicons name="document-attach-outline" size={16} color="#fff" />
+                  <Text className="text-white text-sm font-semibold">PDF Yükle</Text>
+                </TouchableOpacity>
+              </View>
+
+              {studentDocument && (
+                <View className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                  <Text className="text-emerald-800 text-xs font-semibold">
+                    {studentDocument.name}
+                  </Text>
+                  <Text className="text-emerald-700 text-[11px] mt-0.5">
+                    Kayıt sırasında e-Devlet üzerinden doğrulanacak.
+                  </Text>
+                </View>
+              )}
+
+              {verificationInfo && (
+                <View className="mt-3 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
+                  <Text className="text-blue-800 text-xs font-semibold">
+                    Belge doğrulandı
+                  </Text>
+                  <Text className="text-blue-700 text-[11px] mt-0.5">
+                    Barkod: {verificationInfo.barcode}
+                    {verificationInfo.tcMasked ? ` · TC: ${verificationInfo.tcMasked}` : ""}
+                  </Text>
+                </View>
+              )}
+            </View>
+
             <Button
-              label="Kayıt Ol"
+              label={loadingMessage || "Kayıt Ol"}
               onPress={handleRegister}
               loading={loading}
               style={{ marginTop: 8 }}

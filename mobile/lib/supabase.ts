@@ -24,6 +24,10 @@ export type Profile = {
   university_year: string | null;
   avatar_url: string | null;
   whatsapp: string | null;
+  student_document_verified?: boolean;
+  student_document_verified_at?: string | null;
+  student_document_barcode?: string | null;
+  student_document_tc_masked?: string | null;
   created_at: string;
 };
 
