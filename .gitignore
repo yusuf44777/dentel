@@ -47,3 +47,5 @@ supabase/.temp/
 
 # Local Expo scaffold (created separately, has its own git repo)
 /dentel/
+
+*.pdf

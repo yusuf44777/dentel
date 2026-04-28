@@ -4,6 +4,7 @@ import sys
 import time
 import asyncio
 import json
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncGenerator, Optional
 
@@ -20,6 +21,7 @@ VERIFY_URL = "https://www.turkiye.gov.tr/belge-dogrulama"
 _IS_LINUX        = sys.platform == "linux"
 _CHROMIUM_BIN    = "/usr/bin/chromium"
 _CHROMEDRIVER_BIN = "/usr/bin/chromedriver"
+_HEADLESS = os.getenv("SELENIUM_HEADLESS", "true").lower() not in {"0", "false", "no", "off"}
 
 # En fazla 2 eş zamanlı Chrome oturumu — kaynak tükenmesi önlenir
 _EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="selenium")
@@ -39,9 +41,209 @@ def _sanitize_tc(value: str) -> str:
     return _SAFE_TC.sub("", value)[:11]
 
 
+def _normalize_page_text(value: str) -> str:
+    value = value.casefold().replace("ı", "i")
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(ch for ch in value if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _has_any_marker(normalized_text: str, markers: list[str]) -> bool:
+    return any(_normalize_page_text(marker) in normalized_text for marker in markers)
+
+
+def _is_final_document_page(driver: webdriver.Chrome, normalized_text: str) -> bool:
+    if _has_any_marker(normalized_text, _FINAL_SUCCESS_MARKERS):
+        return True
+
+    selectors = [
+        ".contentToolbar a.download[href*='belge=goster']",
+        ".contentToolbar a.download",
+        ".reminderContainer",
+    ]
+    for selector in selectors:
+        for el in driver.find_elements(By.CSS_SELECTOR, selector):
+            try:
+                if el.is_displayed():
+                    return True
+            except Exception:
+                continue
+
+    source = _normalize_page_text(driver.page_source)
+    if "belge=goster" in source and (
+        "contenttoolbar" in source
+        or "download" in source
+        or "dosyayi indir" in source
+    ):
+        return True
+    if "remindercontainer" in source and _has_any_marker(source, _FINAL_SUCCESS_MARKERS):
+        return True
+
+    return False
+
+
+_FINAL_SUCCESS_MARKERS = [
+    "dosyayı indir",
+    "doğrudan yazdırmayınız",
+    "bu sayfayı doğrudan yazdırmayınız",
+    "belgenin çıktısını almak için",
+]
+_SUCCESS_MARKERS = [
+    *_FINAL_SUCCESS_MARKERS,
+    "belge onaylı",
+    "doğrulandı",
+]
+_INVALID_MARKERS = [
+    "kayıt bulunmadı",
+    "kayıt yok",
+    "geçersiz",
+    "bulunamadı",
+    "bulunmadı",
+    "hatalı",
+    "doğrulanamadı",
+]
+_RESULT_STOP_MARKERS = [
+    *_SUCCESS_MARKERS,
+    *_INVALID_MARKERS,
+    "işlem sonucu",
+]
+
+
+def _visible_enabled(driver: webdriver.Chrome, by: By, selector: str):
+    for el in driver.find_elements(by, selector):
+        try:
+            if el.is_displayed() and el.is_enabled():
+                return el
+        except Exception:
+            continue
+    return None
+
+
+def _fill_input(driver: webdriver.Chrome, wait: WebDriverWait, selectors: list[tuple[By, str]], value: str):
+    el = None
+    deadline = time.time() + 8
+    while time.time() < deadline and el is None:
+        for by, selector in selectors:
+            el = _visible_enabled(driver, by, selector)
+            if el is not None:
+                break
+        if el is None:
+            time.sleep(0.2)
+
+    if el is None:
+        return False
+
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
+    time.sleep(0.2)
+    try:
+        el.click()
+        el.clear()
+        el.send_keys(value)
+        driver.execute_script(
+            """
+            const input = arguments[0];
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            """,
+            el,
+        )
+    except Exception:
+        driver.execute_script(
+            """
+            const input = arguments[0];
+            const value = arguments[1];
+            input.focus();
+            input.value = value;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.blur();
+            """,
+            el,
+            value,
+        )
+    return True
+
+
+def _click_submit(driver: webdriver.Chrome, wait: WebDriverWait) -> bool:
+    for by, selector in [
+        (By.CSS_SELECTOR, "form.serviceForm input.submitButton"),
+        (By.CSS_SELECTOR, "form.serviceForm input[data-submit='true']"),
+        (By.CSS_SELECTOR, "form.serviceForm button[type='submit']"),
+        (By.XPATH, "//form[contains(@class,'serviceForm')]//*[self::button or self::input][contains(normalize-space(@value),'Devam') or contains(normalize-space(.),'Devam')]"),
+        (By.XPATH, "//form[contains(@class,'serviceForm')]//*[self::button or self::input][contains(normalize-space(@value),'Sorgula') or contains(normalize-space(.),'Sorgula') or contains(normalize-space(@value),'Doğrula') or contains(normalize-space(.),'Doğrula')]"),
+    ]:
+        try:
+            wait.until(EC.presence_of_element_located((by, selector)))
+        except TimeoutException:
+            continue
+
+        el = _visible_enabled(driver, by, selector)
+        if el is None:
+            continue
+
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
+        time.sleep(0.2)
+        try:
+            el.click()
+        except Exception:
+            driver.execute_script("arguments[0].click();", el)
+        return True
+
+    return False
+
+
+def _accept_agreement(driver: webdriver.Chrome) -> bool:
+    accepted = False
+    selectors = [
+        (By.NAME, "chkOnay"),
+        (By.CSS_SELECTOR, "form.serviceForm input[type='checkbox']"),
+        (By.CSS_SELECTOR, "form.serviceForm input.radioButton"),
+        (By.XPATH, "//label[contains(normalize-space(),'okudum') or contains(normalize-space(),'kabul ediyorum')]//input"),
+    ]
+
+    for by, selector in selectors:
+        for checkbox in driver.find_elements(by, selector):
+            try:
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", checkbox)
+                time.sleep(0.1)
+                driver.execute_script(
+                    """
+                    const checkbox = arguments[0];
+                    if (!checkbox.checked) {
+                      checkbox.click();
+                    }
+                    checkbox.checked = true;
+                    checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    """,
+                    checkbox,
+                )
+                accepted = True
+            except Exception:
+                continue
+
+    if accepted:
+        return True
+
+    for label in driver.find_elements(
+        By.XPATH,
+        "//label[contains(normalize-space(),'okudum') or contains(normalize-space(),'kabul ediyorum')]",
+    ):
+        try:
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", label)
+            time.sleep(0.1)
+            label.click()
+            return True
+        except Exception:
+            continue
+
+    return False
+
+
 def _build_driver() -> webdriver.Chrome:
     options = Options()
-    options.add_argument("--headless=new")
+    if _HEADLESS:
+        options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-setuid-sandbox")
@@ -89,74 +291,68 @@ def _run_selenium(tc_number: Optional[str], barcode: str) -> dict:
         driver.get(VERIFY_URL)
         time.sleep(2)
 
-        # ── Barkod alanı ─────────────────────────────────────────────────────
-        barcode_input = None
-        for by, sel in [
-            (By.ID,          "barkod"),
-            (By.ID,          "belgeNo"),
-            (By.ID,          "belge-no"),
-            (By.NAME,        "barkod"),
-            (By.NAME,        "belgeNo"),
-            (By.CSS_SELECTOR, "input[placeholder*='barkod' i]"),
-            (By.CSS_SELECTOR, "input[placeholder*='belge' i]"),
-            (By.CSS_SELECTOR, "input[type='text']"),
-        ]:
-            try:
-                barcode_input = wait.until(EC.presence_of_element_located((by, sel)))
-                break
-            except TimeoutException:
-                continue
+        barcode_filled = _fill_input(driver, wait, [
+            (By.ID, "sorgulananBarkod"),
+            (By.NAME, "sorgulananBarkod"),
+            (By.CSS_SELECTOR, "form.serviceForm input[edl-mob='barkodInput']"),
+            (By.CSS_SELECTOR, "form.serviceForm input[name*='Barkod' i]"),
+            (By.XPATH, "//label[contains(normalize-space(),'Barkod')]/following::input[1]"),
+            (By.CSS_SELECTOR, "form.serviceForm input.text"),
+        ], safe_barcode)
 
-        if barcode_input is None:
-            return {"valid": False, "details": "", "error": "Giriş alanı bulunamadı."}
-
-        barcode_input.clear()
-        barcode_input.send_keys(safe_barcode)
+        if not barcode_filled:
+            return {"valid": False, "details": "", "error": "Barkod giriş alanı bulunamadı."}
         time.sleep(0.4)
 
-        # ── TC alanı (opsiyonel) ──────────────────────────────────────────────
-        if safe_tc:
-            for by, sel in [
-                (By.ID,          "tcKimlikNo"),
-                (By.ID,          "tc"),
-                (By.NAME,        "tcKimlikNo"),
-                (By.CSS_SELECTOR, "input[placeholder*='kimlik' i]"),
-                (By.CSS_SELECTOR, "input[placeholder*='TC' i]"),
-            ]:
-                try:
-                    el = driver.find_element(by, sel)
-                    el.clear()
-                    el.send_keys(safe_tc)
-                    break
-                except NoSuchElementException:
-                    continue
+        if not _click_submit(driver, wait):
+            return {"valid": False, "details": "", "error": "Devam butonu bulunamadı."}
 
-        # ── Submit ────────────────────────────────────────────────────────────
-        submitted = False
-        for by, sel in [
-            (By.CSS_SELECTOR, "button[type='submit']"),
-            (By.CSS_SELECTOR, "input[type='submit']"),
-            (By.XPATH,        "//button[contains(normalize-space(),'Sorgula')]"),
-            (By.XPATH,        "//button[contains(normalize-space(),'Doğrula')]"),
-            (By.CSS_SELECTOR, "button.btn"),
-        ]:
-            try:
-                driver.find_element(by, sel).click()
-                submitted = True
+        time.sleep(1.5)
+
+        # ── Sonraki adımlar: TC alanı ve olası onay ekranları ────────────────
+        for _ in range(3):
+            body_text = _normalize_page_text(driver.find_element(By.TAG_NAME, "body").text)
+            if _is_final_document_page(driver, body_text):
                 break
-            except NoSuchElementException:
-                continue
+            if _has_any_marker(body_text, _RESULT_STOP_MARKERS):
+                break
 
-        if not submitted:
-            return {"valid": False, "details": "", "error": "Doğrula butonu bulunamadı."}
+            advanced = False
+            if safe_tc and any(k in body_text for k in ["kimlik", "t.c", "tc"]):
+                advanced = _fill_input(driver, wait, [
+                    (By.ID, "ikinciAlan"),
+                    (By.NAME, "ikinciAlan"),
+                    (By.CSS_SELECTOR, "form.serviceForm input[data-type-id='6']"),
+                    (By.CSS_SELECTOR, "form.serviceForm input[pattern='^[0-9]{11}$']"),
+                    (By.CSS_SELECTOR, "form.serviceForm input[placeholder*='11111111117']"),
+                    (By.ID, "sorgulananTCKimlikNo"),
+                    (By.ID, "tcKimlikNo"),
+                    (By.NAME, "sorgulananTCKimlikNo"),
+                    (By.NAME, "tcKimlikNo"),
+                    (By.CSS_SELECTOR, "form.serviceForm input[name*='Kimlik' i]"),
+                    (By.CSS_SELECTOR, "form.serviceForm input[id*='Kimlik' i]"),
+                    (By.XPATH, "//label[contains(normalize-space(),'Kimlik') or contains(normalize-space(),'T.C') or contains(normalize-space(),'TC')]/following::input[1]"),
+                ], safe_tc)
+                time.sleep(0.3)
 
-        time.sleep(3)
+            if any(k in body_text for k in ["okudum", "kabul ediyorum", "bilgilendirme ve onay", "chkOnay".lower()]):
+                if _accept_agreement(driver):
+                    advanced = True
+                    time.sleep(0.3)
+
+            if _click_submit(driver, wait):
+                advanced = True
+                time.sleep(2)
+
+            if not advanced:
+                break
 
         # ── Sonuç ─────────────────────────────────────────────────────────────
-        page_text = driver.find_element(By.TAG_NAME, "body").text.lower()
+        page_text = _normalize_page_text(driver.find_element(By.TAG_NAME, "body").text)
 
-        is_valid   = any(k in page_text for k in ["geçerli", "doğrulandı", "belge bilgileri", "belge onaylı", "kayıtlı"])
-        is_invalid = any(k in page_text for k in ["geçersiz", "bulunamadı", "hatalı", "doğrulanamadı", "kayıt yok"])
+        has_final_success = _is_final_document_page(driver, page_text)
+        is_valid = has_final_success or _has_any_marker(page_text, _SUCCESS_MARKERS)
+        is_invalid = _has_any_marker(page_text, _INVALID_MARKERS)
 
         details = ""
         for by, sel in [
@@ -183,7 +379,7 @@ def _run_selenium(tc_number: Optional[str], barcode: str) -> dict:
         # Sonuç detay uzunluğunu sınırla
         details = details[:1000]
 
-        if is_valid:
+        if has_final_success or (is_valid and not is_invalid):
             return {"valid": True,  "details": details, "error": None}
         if is_invalid:
             return {"valid": False, "details": details, "error": None}
