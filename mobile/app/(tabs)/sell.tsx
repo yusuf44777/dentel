@@ -39,6 +39,8 @@ type UploadListingImageResponse = {
   fileId?: string;
   storagePath?: string;
   driveViewUrl?: string;
+  webContentLink?: string | null;
+  thumbnailLink?: string | null;
   folderId?: string;
   requestId?: string;
   error?: string;
@@ -49,6 +51,22 @@ type UploadedImage = {
   fileId: string;
   storagePath: string;
 };
+
+async function cleanupUploadedImages(images: UploadedImage[]) {
+  const fileIds = images.map((image) => image.fileId).filter(Boolean);
+  if (fileIds.length === 0) return;
+
+  const { error } = await supabase.functions.invoke("upload-listing-image", {
+    body: {
+      action: "delete",
+      fileIds,
+    },
+  });
+
+  if (error) {
+    console.warn("Drive cleanup failed:", error.message);
+  }
+}
 
 async function uploadImage(
   image: PickedImage,
@@ -208,11 +226,15 @@ export default function SellScreen() {
     if (!validate()) return;
     if (!user) return;
     setLoading(true);
+    const uploadedImages: UploadedImage[] = [];
+    let listingId: string | null = null;
+    let listingCreated = false;
+    let imageRowsCreated = false;
+
     try {
-      const listingId = uuidv4();
+      listingId = uuidv4();
 
       setUploadStep("Fotoğraflar yükleniyor...");
-      const uploadedImages: UploadedImage[] = [];
       for (let i = 0; i < images.length; i++) {
         setUploadStep(`Fotoğraf ${i + 1}/${images.length} yükleniyor...`);
         const uploaded = await uploadImage(images[i], listingId, i);
@@ -231,6 +253,7 @@ export default function SellScreen() {
         status: "active",
       });
       if (listingError) throw new Error(listingError.message);
+      listingCreated = true;
 
       const imageRows = uploadedImages.map((uploaded, i) => ({
         listing_id: listingId,
@@ -242,9 +265,17 @@ export default function SellScreen() {
       }));
       const { error: imgError } = await supabase.from("listing_images").insert(imageRows);
       if (imgError) throw new Error(imgError.message);
+      imageRowsCreated = true;
 
       router.push(`/listing/${listingId}`);
     } catch (err: any) {
+      if (!imageRowsCreated) {
+        if (listingCreated && listingId) {
+          await supabase.from("listings").delete().eq("id", listingId).eq("seller_id", user.id);
+        }
+        await cleanupUploadedImages(uploadedImages);
+      }
+
       Alert.alert(
         "Hata",
         getTurkishErrorMessage(err, "Bir hata oluştu, tekrar deneyin.")

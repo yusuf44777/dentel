@@ -7,12 +7,31 @@ const CORS_HEADERS = {
 };
 
 type UploadPayload = {
+  action?: "upload";
   listingId: string;
   index: number;
   imageBase64: string;
   mimeType: string;
   fileName?: string;
 };
+
+type DeletePayload = {
+  action: "delete";
+  fileIds: string[];
+};
+
+type DriveFileMetadata = {
+  id: string;
+  webViewLink?: string;
+  webContentLink?: string;
+  thumbnailLink?: string;
+  name?: string;
+  parents?: string[];
+  appProperties?: Record<string, string>;
+};
+
+const DRIVE_FILE_FIELDS =
+  "id,webViewLink,webContentLink,thumbnailLink,name,parents,appProperties";
 
 function jsonResponse(status: number, payload: Record<string, unknown>) {
   return new Response(JSON.stringify(payload), {
@@ -34,11 +53,17 @@ function decodeBase64(base64: string) {
 }
 
 function detectExtension(payload: UploadPayload) {
-  const fileNameExt = payload.fileName?.split(".").pop()?.toLowerCase() ?? "";
   const mimeExt = payload.mimeType.split("/").pop()?.toLowerCase() ?? "";
-  const candidate = fileNameExt || mimeExt || "jpg";
+  const fileNameExt = payload.fileName?.split(".").pop()?.toLowerCase() ?? "";
+  const candidate = mimeExt || fileNameExt || "jpg";
   const safe = candidate.replace(/[^a-z0-9]/g, "");
-  return safe || "jpg";
+  if (!safe || safe === "jpeg") return "jpg";
+  return safe;
+}
+
+function normalizeMimeType(mimeType: string) {
+  const normalized = mimeType.trim().toLowerCase();
+  return normalized === "image/jpg" ? "image/jpeg" : normalized;
 }
 
 function normalizeFolderId(value: string) {
@@ -60,6 +85,30 @@ function normalizeFolderId(value: string) {
   return raw;
 }
 
+async function readResponseBody(response: Response) {
+  const text = await response.text().catch(() => "");
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return { error: { message: text } };
+  }
+}
+
+function googleErrorMessage(payload: Record<string, unknown>, fallback: string) {
+  const error = payload.error;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+
+  const description = payload.error_description;
+  if (typeof description === "string" && description.trim()) return description;
+
+  return fallback;
+}
+
 async function getDriveAccessToken(input: {
   clientId: string;
   clientSecret: string;
@@ -76,12 +125,134 @@ async function getDriveAccessToken(input: {
     }),
   });
 
-  const tokenJson = await tokenResponse.json();
+  const tokenJson = await readResponseBody(tokenResponse);
   if (!tokenResponse.ok || !tokenJson?.access_token) {
-    throw new Error(tokenJson?.error_description ?? "Google access token alınamadı.");
+    throw new Error(googleErrorMessage(tokenJson, "Google access token alınamadı."));
   }
 
   return tokenJson.access_token as string;
+}
+
+function createDrivePublicUrl(fileId: string) {
+  return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`;
+}
+
+function createMultipartUploadBody(input: {
+  metadata: Record<string, unknown>;
+  bytes: Uint8Array;
+  mimeType: string;
+}) {
+  const boundary = `dentel_${crypto.randomUUID().replace(/-/g, "")}`;
+  const metadata = JSON.stringify(input.metadata);
+  const body = new Blob([
+    `--${boundary}\r\n`,
+    "Content-Type: application/json; charset=UTF-8\r\n\r\n",
+    metadata,
+    `\r\n--${boundary}\r\n`,
+    `Content-Type: ${input.mimeType}\r\n\r\n`,
+    input.bytes,
+    `\r\n--${boundary}--\r\n`,
+  ]);
+
+  return {
+    body,
+    contentType: `multipart/related; boundary=${boundary}`,
+  };
+}
+
+async function fetchDriveMetadata(input: {
+  accessToken: string;
+  fileId: string;
+}) {
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}?supportsAllDrives=true&fields=${encodeURIComponent(DRIVE_FILE_FIELDS)}`,
+    {
+      headers: { Authorization: `Bearer ${input.accessToken}` },
+    }
+  );
+
+  const json = await readResponseBody(response);
+  if (!response.ok || !json?.id) {
+    throw new Error(googleErrorMessage(json, "Drive dosya bilgisi alınamadı."));
+  }
+
+  return json as DriveFileMetadata;
+}
+
+async function deleteDriveFile(input: {
+  accessToken: string;
+  fileId: string;
+}) {
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}?supportsAllDrives=true`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${input.accessToken}` },
+    }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const json = await readResponseBody(response);
+    throw new Error(googleErrorMessage(json, "Drive dosyası silinemedi."));
+  }
+}
+
+async function handleDeletePayload(input: {
+  payload: DeletePayload;
+  accessToken: string;
+  userId: string;
+  requestId: string;
+}) {
+  if (!Array.isArray(input.payload.fileIds)) {
+    return jsonResponse(400, {
+      error: "Temizlenecek Drive dosya listesi geçersiz.",
+      requestId: input.requestId,
+    });
+  }
+
+  const fileIds = Array.from(
+    new Set(
+      input.payload.fileIds
+        .filter((fileId) => typeof fileId === "string")
+        .map((fileId) => fileId.trim())
+        .filter((fileId) => /^[A-Za-z0-9_-]+$/.test(fileId))
+    )
+  );
+
+  if (fileIds.length === 0 || fileIds.length > 16) {
+    return jsonResponse(400, {
+      error: "Temizlenecek Drive dosya listesi geçersiz.",
+      requestId: input.requestId,
+    });
+  }
+
+  const deleted: string[] = [];
+  const skipped: string[] = [];
+
+  for (const fileId of fileIds) {
+    const metadata = await fetchDriveMetadata({
+      accessToken: input.accessToken,
+      fileId,
+    });
+
+    if (metadata.appProperties?.user_id !== input.userId) {
+      skipped.push(fileId);
+      continue;
+    }
+
+    await deleteDriveFile({
+      accessToken: input.accessToken,
+      fileId,
+    });
+    deleted.push(fileId);
+  }
+
+  return jsonResponse(200, {
+    success: true,
+    deleted,
+    skipped,
+    requestId: input.requestId,
+  });
 }
 
 Deno.serve(async (req: Request) => {
@@ -158,7 +329,8 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  let payload: UploadPayload;
+  let driveAccessToken: string | null = null;
+  let payload: UploadPayload | DeletePayload;
   try {
     payload = await req.json();
   } catch {
@@ -166,6 +338,42 @@ Deno.serve(async (req: Request) => {
       error: "Geçersiz JSON gövdesi.",
       requestId,
     });
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return jsonResponse(400, {
+      error: "Geçersiz istek gövdesi.",
+      requestId,
+    });
+  }
+
+  if (payload.action === "delete") {
+    try {
+      driveAccessToken = await getDriveAccessToken({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+        refreshToken: googleRefreshToken,
+      });
+
+      return await handleDeletePayload({
+        payload,
+        accessToken: driveAccessToken,
+        userId: user.id,
+        requestId,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Drive dosyaları temizlenemedi.";
+      console.log(
+        JSON.stringify({
+          level: "error",
+          event: "upload_listing_image_cleanup_error",
+          requestId,
+          message,
+        })
+      );
+
+      return jsonResponse(500, { error: message, requestId });
+    }
   }
 
   if (
@@ -176,6 +384,8 @@ Deno.serve(async (req: Request) => {
   ) {
     return jsonResponse(400, { error: "Zorunlu alanlar eksik.", requestId });
   }
+
+  payload.mimeType = normalizeMimeType(payload.mimeType);
 
   if (!payload.mimeType.startsWith("image/")) {
     return jsonResponse(400, {
@@ -189,7 +399,6 @@ Deno.serve(async (req: Request) => {
   }
 
   let createdFileId: string | null = null;
-  let driveAccessToken: string | null = null;
 
   try {
     const bytes = decodeBase64(payload.imageBase64);
@@ -224,30 +433,37 @@ Deno.serve(async (req: Request) => {
     const storagePath = `listings/${user.id}/${payload.listingId}/${payload.index}.${ext}`;
     const driveFileName = `${user.id}_${payload.listingId}_${payload.index}.${ext}`;
 
+    const metadata = {
+      name: driveFileName,
+      parents: [googleFolderId],
+      appProperties: {
+        storage_path: storagePath,
+        listing_id: payload.listingId,
+        user_id: user.id,
+        photo_index: String(payload.index),
+      },
+    };
+    const multipart = createMultipartUploadBody({
+      metadata,
+      bytes,
+      mimeType: payload.mimeType,
+    });
+
     const createResponse = await fetch(
-      "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,webViewLink,name,parents",
+      `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=${encodeURIComponent(DRIVE_FILE_FIELDS)}`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${driveAccessToken}`,
-          "Content-Type": "application/json",
+          "Content-Type": multipart.contentType,
         },
-        body: JSON.stringify({
-          name: driveFileName,
-          parents: [googleFolderId],
-          appProperties: {
-            storage_path: storagePath,
-            listing_id: payload.listingId,
-            user_id: user.id,
-            photo_index: String(payload.index),
-          },
-        }),
+        body: multipart.body,
       }
     );
 
-    const createJson = await createResponse.json();
+    const createJson = await readResponseBody(createResponse);
     if (!createResponse.ok || !createJson?.id) {
-      throw new Error(createJson?.error?.message ?? "Drive dosyası oluşturulamadı.");
+      throw new Error(googleErrorMessage(createJson, "Drive dosyası yüklenemedi."));
     }
 
     const fileId = createJson.id as string;
@@ -262,23 +478,6 @@ Deno.serve(async (req: Request) => {
         folderId: googleFolderId,
       })
     );
-
-    const mediaResponse = await fetch(
-      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${driveAccessToken}`,
-          "Content-Type": payload.mimeType,
-        },
-        body: bytes,
-      }
-    );
-
-    if (!mediaResponse.ok) {
-      const mediaJson = await mediaResponse.json().catch(() => ({}));
-      throw new Error(mediaJson?.error?.message ?? "Drive dosyası yüklenemedi.");
-    }
 
     const permissionResponse = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`,
@@ -296,11 +495,27 @@ Deno.serve(async (req: Request) => {
     );
 
     if (!permissionResponse.ok) {
-      const permissionJson = await permissionResponse.json().catch(() => ({}));
-      throw new Error(permissionJson?.error?.message ?? "Drive dosyası public yapılamadı.");
+      const permissionJson = await readResponseBody(permissionResponse);
+      throw new Error(googleErrorMessage(permissionJson, "Drive dosyası public yapılamadı."));
     }
 
-    const publicUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+    const fileMetadata = await fetchDriveMetadata({
+      accessToken: driveAccessToken,
+      fileId,
+    }).catch((error) => {
+      console.log(
+        JSON.stringify({
+          level: "warn",
+          event: "upload_listing_image_metadata_refresh_failed",
+          requestId,
+          fileId,
+          message: error instanceof Error ? error.message : "Metadata alınamadı.",
+        })
+      );
+
+      return createJson as DriveFileMetadata;
+    });
+    const publicUrl = createDrivePublicUrl(fileId);
     console.log(
       JSON.stringify({
         level: "info",
@@ -316,15 +531,17 @@ Deno.serve(async (req: Request) => {
       fileId,
       storagePath,
       publicUrl,
-      driveViewUrl: createJson.webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`,
+      driveViewUrl: fileMetadata.webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`,
+      webContentLink: fileMetadata.webContentLink ?? null,
+      thumbnailLink: fileMetadata.thumbnailLink ?? null,
       folderId: googleFolderId,
       requestId,
     });
   } catch (error) {
     if (createdFileId && driveAccessToken) {
-      await fetch(`https://www.googleapis.com/drive/v3/files/${createdFileId}?supportsAllDrives=true`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${driveAccessToken}` },
+      await deleteDriveFile({
+        accessToken: driveAccessToken,
+        fileId: createdFileId,
       }).catch(() => null);
     }
 

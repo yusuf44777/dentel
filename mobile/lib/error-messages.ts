@@ -13,6 +13,25 @@ export function getTurkishErrorMessage(
 
   const message = rawMessage.toLowerCase();
 
+  if (message.includes("sunucu ortam değişkenleri eksik")) {
+    return "Drive yükleme ayarları eksik. Supabase Function secret değerlerini kontrol et.";
+  }
+  if (message.includes("google access token") || message.includes("invalid_grant")) {
+    return "Google Drive bağlantısı doğrulanamadı. Refresh token veya OAuth bilgilerini yenile.";
+  }
+  if (message.includes("drive dosyası") || message.includes("google drive")) {
+    return rawMessage;
+  }
+  if (
+    message.includes("drive_file_id") ||
+    message.includes("storage_path") ||
+    message.includes("storage_provider")
+  ) {
+    return "Drive metadata kolonları veritabanında eksik görünüyor. Supabase migration'larını çalıştır.";
+  }
+  if (message.includes("row-level security") || message.includes("violates row-level")) {
+    return "Bu işlem için yetki doğrulaması başarısız oldu. Çıkış yapıp tekrar giriş yapmayı dene.";
+  }
   if (message.includes("invalid login credentials")) {
     return "E-posta veya şifre hatalı.";
   }
@@ -30,6 +49,9 @@ export function getTurkishErrorMessage(
   }
   if (message.includes("rate limit")) {
     return "Çok fazla deneme yaptın. Lütfen biraz sonra tekrar dene.";
+  }
+  if (rawMessage.includes("requestId:") || /[çğıöşüİ]/.test(rawMessage)) {
+    return rawMessage;
   }
 
   return fallback;
