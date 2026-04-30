@@ -2,7 +2,7 @@
   "expo": {
     "name": "dentel",
     "slug": "dentel",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dentel",
@@ -15,11 +15,13 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.dentel.app",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "versionCode": 2,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",

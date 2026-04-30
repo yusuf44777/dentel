@@ -1,5 +1,6 @@
 import re
 import io
+import unicodedata
 from typing import Optional
 
 # Derlenmiş regex — güvenli sınırlar, ReDoS imkânsız
@@ -23,6 +24,21 @@ _RE_CODE_GENERAL = re.compile(r"\b([A-Z]{2,4}[0-9]{6,16}[A-Z0-9]{0,8})\b")
 _PDF_MAGIC   = b"%PDF"
 _MAX_BYTES   = 20 * 1024 * 1024   # 20 MB yükleme limiti
 _MAX_TEXT    = 200 * 1024          # 200 KB metin tarama limiti
+_ALLOWED_DEPARTMENTS = ("Diş Hekimliği", "Diş Protez Teknolojisi")
+
+
+def _normalize_department_text(text: str) -> str:
+    normalized = text.casefold().replace("ı", "i")
+    normalized = unicodedata.normalize("NFKD", normalized)
+    normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+_ALLOWED_DEPARTMENT_TOKENS = tuple(
+    (department, _normalize_department_text(department))
+    for department in _ALLOWED_DEPARTMENTS
+)
 
 
 def _check_magic(pdf_bytes: bytes) -> None:
@@ -77,6 +93,14 @@ def _find_barcode(text: str) -> Optional[str]:
     return None
 
 
+def _find_allowed_department(text: str) -> Optional[str]:
+    searchable = f" {_normalize_department_text(text)} "
+    for department, token in _ALLOWED_DEPARTMENT_TOKENS:
+        if f" {token} " in searchable:
+            return department
+    return None
+
+
 def extract_document_info(pdf_bytes: bytes) -> dict:
     """
     PDF'den yalnızca doğrulama için gereken bilgileri bellekte çıkarır.
@@ -86,5 +110,10 @@ def extract_document_info(pdf_bytes: bytes) -> dict:
     text = _extract_text(pdf_bytes)
     tc      = _find_tc(text)
     barcode = _find_barcode(text)
+    department_allowed = _find_allowed_department(text) is not None
     del text  # ham metin bellekten temizle
-    return {"tc_number": tc, "barcode": barcode}
+    return {
+        "tc_number": tc,
+        "barcode": barcode,
+        "department_allowed": department_allowed,
+    }

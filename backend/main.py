@@ -347,13 +347,21 @@ async def _extract_pdf_info(file: UploadFile) -> dict:
         raise HTTPException(status_code=400, detail="Dosya 20 MB'dan büyük olamaz.")
 
     try:
-        return extract_document_info(content)
+        info = extract_document_info(content)
     except ValueError:
         raise HTTPException(status_code=422, detail="Geçersiz veya bozuk PDF dosyası.")
     except Exception:
         raise HTTPException(status_code=422, detail="PDF işlenemedi.")
     finally:
         del content
+
+    if not info.get("department_allowed"):
+        raise HTTPException(
+            status_code=422,
+            detail="Belgede Diş Hekimliği veya Diş Protez Teknolojisi bölümü bulunmalıdır.",
+        )
+
+    return info
 
 
 def _resolve_document_fields(
