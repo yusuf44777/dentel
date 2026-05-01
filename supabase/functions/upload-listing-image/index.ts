@@ -255,6 +255,44 @@ async function handleDeletePayload(input: {
   });
 }
 
+async function ensureVerifiedProfile(input: {
+  userClient: ReturnType<typeof createClient>;
+  userId: string;
+  requestId: string;
+}) {
+  const { data, error } = await input.userClient
+    .from("profiles")
+    .select("student_document_verified")
+    .eq("id", input.userId)
+    .maybeSingle();
+
+  if (error) {
+    console.log(
+      JSON.stringify({
+        level: "error",
+        event: "upload_listing_image_profile_check_failed",
+        requestId: input.requestId,
+        userId: input.userId,
+        message: error.message,
+      })
+    );
+
+    return jsonResponse(403, {
+      error: "Öğrenci belge doğrulaması kontrol edilemedi.",
+      requestId: input.requestId,
+    });
+  }
+
+  if (data?.student_document_verified !== true) {
+    return jsonResponse(403, {
+      error: "Fotoğraf yüklemek için öğrenci belgesi doğrulanmış olmalıdır.",
+      requestId: input.requestId,
+    });
+  }
+
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   const requestId = crypto.randomUUID();
 
@@ -384,6 +422,13 @@ Deno.serve(async (req: Request) => {
   ) {
     return jsonResponse(400, { error: "Zorunlu alanlar eksik.", requestId });
   }
+
+  const verificationError = await ensureVerifiedProfile({
+    userClient,
+    userId: user.id,
+    requestId,
+  });
+  if (verificationError) return verificationError;
 
   payload.mimeType = normalizeMimeType(payload.mimeType);
 

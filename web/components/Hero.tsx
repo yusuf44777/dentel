@@ -15,7 +15,7 @@ export default function Hero() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-primary text-sm font-semibold px-4 py-2 rounded-full mb-8">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Diş hekimliği öğrencileri için
+            Diş hekimliği ve diş protez teknolojisi öğrencileri için
           </div>
 
           <h1 className="text-5xl md:text-6xl font-black text-slate-900 leading-[1.05] tracking-tight text-balance mb-6">
@@ -26,8 +26,8 @@ export default function Hero() {
 
           <p className="text-lg text-slate-500 leading-relaxed mb-10 max-w-md">
             Kullanmadığın aletleri sat, ihtiyacın olanı uygun fiyata bul.
-            Üst sınıflardan alt sınıflara — diş hekimliği öğrencileri için
-            tasarlandı.
+            Üst sınıflardan alt sınıflara, diş hekimliği ve diş protez
+            teknolojisi öğrencileri için tasarlandı.
           </p>
 
           {/* Download buttons */}

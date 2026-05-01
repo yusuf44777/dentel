@@ -90,8 +90,8 @@ export default function HowItWorks() {
             </h3>
             <ul className="space-y-3 text-slate-600 text-sm">
               {[
-                "5. sınıf öğrencilerinin aletleri çekmecede bekliyor",
-                "1. sınıf öğrencileri tam fiyat ödüyor",
+                "Üst sınıf öğrencilerinin aletleri çekmecede bekliyor",
+                "Yeni başlayan öğrenciler tam fiyat ödüyor",
                 "Facebook gruplarında aramak çok zaman alıyor",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2">

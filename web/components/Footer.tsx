@@ -11,8 +11,8 @@ export default function Footer() {
               <BrandLogo textClassName="text-white" iconClassName="w-9 h-9" />
             </div>
             <p className="text-sm leading-relaxed">
-              Diş hekimliği öğrencileri için ikinci el dental malzeme
-              platformu.
+              Diş hekimliği ve diş protez teknolojisi öğrencileri için ikinci
+              el dental malzeme platformu.
             </p>
           </div>
 

@@ -1,11 +1,16 @@
 import os
 import re
+import asyncio
 import time
 import json
 import hmac
 import hashlib
+import ipaddress
 import secrets
 import sqlite3
+import urllib.error
+import urllib.parse
+import urllib.request
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -68,13 +73,45 @@ app.add_middleware(
 _RL_WINDOW  = 60       # saniye
 _RL_MAX     = 5        # dakikada maks 5 /verify/stream isteği
 _rl_store: dict[str, list[float]] = defaultdict(list)
+_TRUSTED_PROXY_NETWORKS = tuple(
+    ipaddress.ip_network(item.strip(), strict=False)
+    for item in os.getenv("TRUSTED_PROXY_IPS", "").split(",")
+    if item.strip()
+)
+
+
+def _parse_ip(value: Optional[str]) -> Optional[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    if not value:
+        return None
+    try:
+        return ipaddress.ip_address(value.strip())
+    except ValueError:
+        return None
+
+
+def _is_trusted_proxy(host: Optional[str]) -> bool:
+    ip = _parse_ip(host)
+    return bool(ip and any(ip in network for network in _TRUSTED_PROXY_NETWORKS))
 
 
 def _get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    peer_host = request.client.host if request.client else None
+
+    if _is_trusted_proxy(peer_host):
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            first_forwarded_ip = _parse_ip(forwarded.split(",")[0])
+            if first_forwarded_ip:
+                return str(first_forwarded_ip)
+
+        real_ip = _parse_ip(
+            request.headers.get("CF-Connecting-IP")
+            or request.headers.get("X-Real-IP")
+        )
+        if real_ip:
+            return str(real_ip)
+
+    return peer_host or "unknown"
 
 
 def _check_rate_limit(ip: str) -> bool:
@@ -89,16 +126,144 @@ def _check_rate_limit(ip: str) -> bool:
 
 # ── Input doğrulama ───────────────────────────────────────────────────────────
 
-_RE_BARCODE_SAFE = re.compile(r"^[A-Z0-9\-]{8,30}$")
 _RE_PHONE_SAFE = re.compile(r"^\+?[0-9]{10,15}$")
 
 _DB_PATH = Path(os.getenv("STUDENT_DB_PATH", "/tmp/dentel_students.sqlite3"))
 _PASSWORD_ITERATIONS = 210_000
+_SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+_SUPABASE_ANON_KEY = (
+    os.getenv("SUPABASE_ANON_KEY")
+    or os.getenv("EXPO_PUBLIC_SUPABASE_ANON_KEY")
+    or os.getenv("EXPO_PUBLIC_SUPABASE_KEY")
+)
+_SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 
 class LoginPayload(BaseModel):
     email: str
     password: str
+
+
+def _require_supabase_config() -> tuple[str, str, str]:
+    if not _SUPABASE_URL or not _SUPABASE_ANON_KEY or not _SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(status_code=500, detail="Supabase sunucu ayarları eksik.")
+    return _SUPABASE_URL, _SUPABASE_ANON_KEY, _SUPABASE_SERVICE_ROLE_KEY
+
+
+def _json_http_request(
+    method: str,
+    url: str,
+    *,
+    headers: dict[str, str],
+    payload: Optional[dict] = None,
+) -> dict:
+    body = None
+    request_headers = dict(headers)
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        request_headers["Content-Type"] = "application/json"
+
+    request = urllib.request.Request(
+        url,
+        data=body,
+        headers=request_headers,
+        method=method,
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        try:
+            data = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            data = {"message": raw}
+
+        message = (
+            data.get("msg")
+            or data.get("message")
+            or data.get("error_description")
+            or data.get("error")
+            or "Supabase isteği başarısız oldu."
+        )
+        status_code = exc.code if exc.code in {400, 401, 403, 409, 422, 429} else 502
+        raise HTTPException(status_code=status_code, detail=str(message))
+    except urllib.error.URLError:
+        raise HTTPException(status_code=502, detail="Supabase servisine ulaşılamadı.")
+
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=502, detail="Supabase yanıtı okunamadı.")
+
+
+def _supabase_signup(
+    *,
+    email: str,
+    password: str,
+    metadata: dict,
+    email_redirect_to: Optional[str],
+) -> dict:
+    supabase_url, anon_key, _ = _require_supabase_config()
+    url = f"{supabase_url}/auth/v1/signup"
+    if email_redirect_to:
+        url = f"{url}?redirect_to={urllib.parse.quote(email_redirect_to, safe='')}"
+
+    return _json_http_request(
+        "POST",
+        url,
+        headers={
+            "apikey": anon_key,
+            "Authorization": f"Bearer {anon_key}",
+        },
+        payload={
+            "email": email,
+            "password": password,
+            "data": metadata,
+        },
+    )
+
+
+def _supabase_mark_profile_verified(
+    *,
+    user_id: str,
+    full_name: str,
+    university_year: str,
+    whatsapp: str,
+    barcode: str,
+    tc_masked: Optional[str],
+) -> dict:
+    supabase_url, _, service_role_key = _require_supabase_config()
+    url = f"{supabase_url}/rest/v1/profiles?id=eq.{urllib.parse.quote(user_id)}"
+    verified_at = datetime.now(timezone.utc).isoformat()
+
+    data = _json_http_request(
+        "PATCH",
+        url,
+        headers={
+            "apikey": service_role_key,
+            "Authorization": f"Bearer {service_role_key}",
+            "Prefer": "return=representation",
+        },
+        payload={
+            "full_name": full_name,
+            "university_year": university_year,
+            "whatsapp": whatsapp,
+            "student_document_verified": True,
+            "student_document_verified_at": verified_at,
+            "student_document_barcode": barcode,
+            "student_document_tc_masked": tc_masked,
+        },
+    )
+
+    if isinstance(data, list) and data:
+        return data[0]
+    if isinstance(data, dict):
+        return data
+    raise HTTPException(status_code=502, detail="Profil doğrulaması kaydedilemedi.")
 
 
 def _connect_db() -> sqlite3.Connection:
@@ -207,6 +372,13 @@ def _validate_password(value: Optional[str]) -> str:
     password = value or ""
     if len(password) < 8:
         raise HTTPException(status_code=422, detail="Şifre en az 8 karakter olmalıdır.")
+    return password
+
+
+def _validate_auth_password(value: Optional[str]) -> str:
+    password = value or ""
+    if len(password) < 6:
+        raise HTTPException(status_code=422, detail="Şifre en az 6 karakter olmalıdır.")
     return password
 
 
@@ -327,13 +499,6 @@ def _validate_tc_override(value: str) -> str:
     return cleaned
 
 
-def _validate_barcode_override(value: str) -> str:
-    cleaned = re.sub(r"[^A-Z0-9\-]", "", value.upper())
-    if not _RE_BARCODE_SAFE.match(cleaned):
-        raise HTTPException(status_code=422, detail="Barkod formatı geçersiz (8-30 alfanümerik karakter).")
-    return cleaned
-
-
 def _mask_tc(tc: str) -> str:
     return f"{tc[:2]}{'*' * 7}{tc[-2:]}"
 
@@ -377,14 +542,17 @@ def _resolve_document_fields(
 
     barcode: Optional[str] = None
     if barcode_override and barcode_override.strip():
-        barcode = _validate_barcode_override(barcode_override.strip())
-    elif info.get("barcode"):
+        raise HTTPException(
+            status_code=422,
+            detail="Barkod manuel girilemez. Lütfen barkod içeren YÖK öğrenci belgesi PDF'i yükleyin.",
+        )
+    if info.get("barcode"):
         barcode = info["barcode"]
 
     if not barcode:
         raise HTTPException(
             status_code=422,
-            detail="Barkod bulunamadı. Lütfen barkod numarasını manuel girin.",
+            detail="Barkod bulunamadı. Lütfen barkod içeren YÖK öğrenci belgesi PDF'i yükleyin.",
         )
 
     return tc_number, barcode
@@ -420,6 +588,91 @@ async def verify_json(
         "tc_masked": _mask_tc(tc_number) if tc_number else None,
         "barcode": barcode,
         "result": result,
+    }
+
+
+@app.post("/auth/register")
+async def register_supabase_user(
+    request: Request,
+    file: UploadFile = File(...),
+    full_name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(...),
+    university_year: str = Form(...),
+    password: str = Form(...),
+    email_redirect_to: Optional[str] = Form(None),
+    tc_override: Optional[str] = Form(None),
+):
+    ip = _get_client_ip(request)
+    if not _check_rate_limit(f"auth-register:{ip}"):
+        raise HTTPException(status_code=429, detail="Çok fazla kayıt denemesi. Lütfen bir dakika bekleyin.")
+
+    student_input = {
+        "full_name": _validate_text_field(full_name, "Ad soyad"),
+        "email": _validate_email(email),
+        "phone": _validate_phone(phone),
+        "university_year": _validate_text_field(university_year, "Sınıf", min_len=1, max_len=40),
+        "password": _validate_auth_password(password),
+    }
+
+    info = await _extract_pdf_info(file)
+    tc_number, barcode = _resolve_document_fields(info, tc_override, None)
+    result = await verify_document(tc_number, barcode)
+
+    if result.get("valid") is not True:
+        raise HTTPException(
+            status_code=422,
+            detail=result.get("error") or "Öğrenci belgesi e-Devlet üzerinde geçerli olarak doğrulanamadı.",
+        )
+
+    signup_response = await asyncio.to_thread(
+        _supabase_signup,
+        email=student_input["email"],
+        password=student_input["password"],
+        metadata={
+            "full_name": student_input["full_name"],
+            "university_year": student_input["university_year"],
+            "whatsapp": student_input["phone"],
+        },
+        email_redirect_to=email_redirect_to.strip() if email_redirect_to and email_redirect_to.strip() else None,
+    )
+
+    user_payload = signup_response.get("user") if isinstance(signup_response.get("user"), dict) else signup_response
+    user_id = user_payload.get("id") if isinstance(user_payload, dict) else None
+    if not user_id:
+        raise HTTPException(status_code=502, detail="Kullanıcı kaydı oluşturuldu ancak kullanıcı bilgisi alınamadı.")
+
+    tc_masked = _mask_tc(tc_number) if tc_number else None
+    profile = await asyncio.to_thread(
+        _supabase_mark_profile_verified,
+        user_id=user_id,
+        full_name=student_input["full_name"],
+        university_year=student_input["university_year"],
+        whatsapp=student_input["phone"],
+        barcode=barcode,
+        tc_masked=tc_masked,
+    )
+
+    session = signup_response.get("session")
+    if not session and signup_response.get("access_token") and signup_response.get("refresh_token"):
+        session = {
+            "access_token": signup_response.get("access_token"),
+            "refresh_token": signup_response.get("refresh_token"),
+            "expires_in": signup_response.get("expires_in"),
+            "expires_at": signup_response.get("expires_at"),
+            "token_type": signup_response.get("token_type"),
+            "user": user_payload,
+        }
+
+    return {
+        "user": user_payload,
+        "session": session,
+        "profile": profile,
+        "verification": {
+            "barcode": barcode,
+            "tc_masked": tc_masked,
+            "valid_label": result.get("valid_label", "GERÇEK"),
+        },
     }
 
 

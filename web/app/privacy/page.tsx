@@ -58,10 +58,10 @@ export default function PrivacyPage() {
               hizmetlerde kişisel verilerin nasıl işlendiğini açıklar.
             </p>
             <p>
-              dentel; diş hekimliği öğrencileri arasında ikinci el dental
-              malzeme alım-satımını kolaylaştırmak amacıyla geliştirilmiş bir
-              platformdur. Platform, Üsküdar Üniversitesi öğrencileri tarafından
-              geliştirilmiştir.
+              dentel; diş hekimliği ve diş protez teknolojisi öğrencileri
+              arasında ikinci el dental malzeme alım-satımını kolaylaştırmak
+              amacıyla geliştirilmiş bir platformdur. Platform, Üsküdar
+              Üniversitesi öğrencileri tarafından geliştirilmiştir.
             </p>
             <p>
               Bu metin; uygulama içi kayıt, giriş, ilan oluşturma, favorileme,

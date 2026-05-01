@@ -103,7 +103,7 @@ export default function RegisterScreen() {
     setError(null);
   }
 
-  async function verifyStudentDocument() {
+  async function registerWithVerifiedDocument(normalizedEmail: string, whatsappNumber: string) {
     if (!studentDocument) {
       throw new Error("Öğrenci belgesi PDF'i seçilmedi.");
     }
@@ -114,38 +114,40 @@ export default function RegisterScreen() {
       name: studentDocument.name || "ogrenci-belgesi.pdf",
       type: studentDocument.mimeType || "application/pdf",
     } as any);
+    form.append("full_name", fullName.trim());
+    form.append("email", normalizedEmail);
+    form.append("phone", whatsappNumber);
+    form.append("university_year", year!);
+    form.append("password", password);
+    form.append("email_redirect_to", authEmailRedirectTo);
 
-    const response = await fetch(`${STUDENT_VERIFIER_URL.replace(/\/$/, "")}/verify`, {
+    const response = await fetch(`${STUDENT_VERIFIER_URL.replace(/\/$/, "")}/auth/register`, {
       method: "POST",
       body: form,
     });
 
     const data = await response.json().catch(() => null) as {
       detail?: string;
-      barcode?: string;
-      tc_masked?: string | null;
-      result?: {
-        valid: boolean | null;
+      session?: {
+        access_token?: string;
+        refresh_token?: string;
+      };
+      verification?: {
+        barcode?: string;
+        tc_masked?: string | null;
         valid_label?: string;
-        error?: string | null;
       };
     } | null;
 
     if (!response.ok) {
-      throw new Error(data?.detail ?? "Öğrenci belgesi doğrulanamadı.");
-    }
-
-    if (data?.result?.valid !== true) {
-      throw new Error(
-        data?.result?.error ??
-          "Öğrenci belgesi e-Devlet üzerinde geçerli olarak doğrulanamadı."
-      );
+      throw new Error(data?.detail ?? "Kayıt oluşturulamadı.");
     }
 
     return {
-      barcode: data.barcode,
-      tcMasked: data.tc_masked,
-      label: data.result.valid_label ?? "GERÇEK",
+      barcode: data?.verification?.barcode,
+      tcMasked: data?.verification?.tc_masked,
+      label: data?.verification?.valid_label ?? "GERÇEK",
+      session: data?.session ?? null,
     };
   }
 
@@ -179,17 +181,24 @@ export default function RegisterScreen() {
     const normalizedEmail = email.trim().toLowerCase();
     const phone = whatsapp.trim().replace(/\D/g, "");
     const whatsappNumber = phone.startsWith("90") ? phone : `90${phone.replace(/^0/, "")}`;
-    let verifiedDocument: Awaited<ReturnType<typeof verifyStudentDocument>>;
+    let registeredDocument: Awaited<ReturnType<typeof registerWithVerifiedDocument>>;
 
     try {
       setLoadingMessage("Bilgiler kontrol ediliyor...");
       await checkContactAvailability(normalizedEmail, whatsappNumber);
-      setLoadingMessage("Öğrenci belgesi doğrulanıyor...");
-      verifiedDocument = await verifyStudentDocument();
+      setLoadingMessage("Öğrenci belgesi doğrulanıyor ve hesap oluşturuluyor...");
+      registeredDocument = await registerWithVerifiedDocument(normalizedEmail, whatsappNumber);
       setVerificationInfo({
-        barcode: verifiedDocument.barcode,
-        tcMasked: verifiedDocument.tcMasked,
+        barcode: registeredDocument.barcode,
+        tcMasked: registeredDocument.tcMasked,
       });
+
+      if (registeredDocument.session?.access_token && registeredDocument.session.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: registeredDocument.session.access_token,
+          refresh_token: registeredDocument.session.refresh_token,
+        });
+      }
     } catch (err) {
       setError(
         getTurkishErrorMessage(
@@ -202,54 +211,8 @@ export default function RegisterScreen() {
       return;
     }
 
-    setLoadingMessage("Hesap oluşturuluyor...");
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: {
-        emailRedirectTo: authEmailRedirectTo,
-        data: {
-          full_name: fullName.trim(),
-          university_year: year,
-          whatsapp: whatsappNumber,
-          student_document_verified: true,
-          student_document_barcode: verifiedDocument.barcode,
-          student_document_tc_masked: verifiedDocument.tcMasked,
-          student_document_verified_at: new Date().toISOString(),
-        },
-      },
-    });
-
-    if (signUpError) {
-      setError(
-        getTurkishErrorMessage(
-          signUpError,
-          "Kayıt sırasında bir hata oluştu. Bilgilerini kontrol edip tekrar dene."
-        )
-      );
-      setLoading(false);
-      setLoadingMessage("");
-      return;
-    }
-
-    // Update the profile row created by the trigger
-    if (data.user) {
-      await supabase
-        .from("profiles")
-        .update({
-          full_name: fullName.trim(),
-          university_year: year,
-          whatsapp: whatsappNumber,
-          student_document_verified: true,
-          student_document_barcode: verifiedDocument.barcode,
-          student_document_tc_masked: verifiedDocument.tcMasked,
-          student_document_verified_at: new Date().toISOString(),
-        })
-        .eq("id", data.user.id);
-    }
-
     setRegisteredEmail(normalizedEmail);
-    setNeedsEmailVerification(!data.session);
+    setNeedsEmailVerification(!registeredDocument.session);
     setSuccess(true);
     setLoading(false);
     setLoadingMessage("");

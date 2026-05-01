@@ -51,7 +51,6 @@ interface RegisterForm {
   password: string;
   confirmPassword: string;
   tcOverride: string;
-  barcodeOverride: string;
 }
 
 const CLASS_LEVELS = [
@@ -87,7 +86,6 @@ const initialRegisterForm: RegisterForm = {
   password: "",
   confirmPassword: "",
   tcOverride: "",
-  barcodeOverride: "",
 };
 
 function stepIndex(key: string) {
@@ -258,9 +256,6 @@ export default function VerifyPage() {
     form.append("class_level", registerForm.classLevel);
     form.append("password", registerForm.password);
     if (registerForm.tcOverride.trim()) form.append("tc_override", registerForm.tcOverride.trim());
-    if (registerForm.barcodeOverride.trim()) {
-      form.append("barcode_override", registerForm.barcodeOverride.trim().toUpperCase());
-    }
 
     try {
       const response = await fetch(`${BACKEND}/students/register/stream`, {
@@ -527,7 +522,7 @@ export default function VerifyPage() {
                     </div>
                     <details className="rounded-md border border-[#d7d0c3] bg-[#fbfaf7] p-3">
                       <summary className="cursor-pointer text-sm font-bold text-[#1d2428]">
-                        Manuel barkod / TC
+                        Manuel TC
                       </summary>
                       <div className="mt-3 grid gap-3">
                         <Field
@@ -537,17 +532,6 @@ export default function VerifyPage() {
                             updateRegisterField("tcOverride", value.replace(/\D/g, "").slice(0, 11))
                           }
                           placeholder="PDF okunamazsa"
-                        />
-                        <Field
-                          label="Barkod"
-                          value={registerForm.barcodeOverride}
-                          onChange={(value) =>
-                            updateRegisterField(
-                              "barcodeOverride",
-                              value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 30)
-                            )
-                          }
-                          placeholder="YÖK belge barkodu"
                         />
                       </div>
                     </details>

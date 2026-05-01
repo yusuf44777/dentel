@@ -35,13 +35,13 @@ const features = [
     iconClass: "fa-graduation-cap",
     title: "Doğrulanmış Öğrenci Topluluğu",
     description:
-      "Öğrenci belgenle doğrulan, güvenilir diş hekimliği topluluğuna katıl.",
+      "Öğrenci belgenle doğrulan, diş hekimliği ve diş protez teknolojisi topluluğuna katıl.",
     color: "from-rose-50 to-rose-100",
     iconBg: "bg-rose-100",
   },
   {
     iconClass: "fa-medkit",
-    title: "Diş Hekimliğine Özel",
+    title: "Dental Bölümlere Özel",
     description:
       "Genel ikinci el değil. Sadece dental malzeme. Daha hızlı bul, daha hızlı sat.",
     color: "from-cyan-50 to-cyan-100",
@@ -64,8 +64,8 @@ export default function Features() {
             <span className="gradient-text">tek bir yerde.</span>
           </h2>
           <p className="text-slate-500 text-lg max-w-xl mx-auto">
-            Dolap ve Letgo'dan ilham alındı, diş hekimliği öğrencilerine göre
-            tasarlandı.
+            Dolap ve Letgo'dan ilham alındı, diş hekimliği ve diş protez
+            teknolojisi öğrencilerine göre tasarlandı.
           </p>
         </div>
 
